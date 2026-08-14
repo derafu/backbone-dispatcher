@@ -13,7 +13,8 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\ObjectFactory;
+use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -21,14 +22,17 @@ use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(Caster::class)]
-#[UsesClass(ObjectFactory::class)]
+#[UsesClass(ObjectFactoryRegistry::class)]
+#[UsesClass(FromArrayDeserializer::class)]
 class CasterTest extends TestCase
 {
     private Caster $caster;
 
     protected function setUp(): void
     {
-        $this->caster = new Caster(new ObjectFactory());
+        $this->caster = new Caster(
+            new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())
+        );
     }
 
     public function testNullIsAlwaysReturnedAsNull(): void
@@ -57,7 +61,7 @@ class CasterTest extends TestCase
         $this->assertSame($data, $this->caster->cast($data, 'object', 'array'));
     }
 
-    public function testCastingObjectToAClassCreatesItThroughTheObjectFactory(): void
+    public function testCastingObjectToAClassCreatesItThroughTheObjectFactoryRegistry(): void
     {
         $bag = $this->caster->cast(
             ['name' => 'folios', 'amount' => 3],

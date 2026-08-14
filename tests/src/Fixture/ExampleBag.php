@@ -14,8 +14,8 @@ namespace Derafu\TestsBackboneDispatcher\Fixture;
 
 /**
  * A real value object with `fromArray()`/`toArray()`, used to exercise
- * ObjectFactory (input hydration) and the default Serializer's `toArray()`
- * convention (output flattening).
+ * FromArrayDeserializer (input deserialization) and the default
+ * Serializer's `toArray()` convention (output flattening).
  */
 class ExampleBag
 {

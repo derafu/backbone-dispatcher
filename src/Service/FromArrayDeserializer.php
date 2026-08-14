@@ -12,13 +12,23 @@ declare(strict_types=1);
 
 namespace Derafu\BackboneDispatcher\Service;
 
-use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
+use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
 
-class ObjectFactory implements ObjectFactoryInterface
+/**
+ * Builds an object by calling the target class's own static `fromArray()`
+ * method — the convention-based deserializer: works for any class that
+ * follows it, with no registration needed. Typically used as
+ * `ObjectFactoryRegistry`'s fallback for classes that have no dedicated
+ * `DeserializerInterface` registered.
+ */
+class FromArrayDeserializer implements DeserializerInterface
 {
-    public function create(string $class, array|string|null $data): ?object
+    /**
+     * {@inheritDoc}
+     */
+    public function deserialize(array|string $data, string $class): object
     {
         if (!class_exists($class)) {
             throw ClassNotFoundException::forClass($class);

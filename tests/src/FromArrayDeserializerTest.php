@@ -14,31 +14,31 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
-use Derafu\BackboneDispatcher\Service\ObjectFactory;
+use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
 
-#[CoversClass(ObjectFactory::class)]
+#[CoversClass(FromArrayDeserializer::class)]
 #[UsesClass(ClassNotFoundException::class)]
 #[UsesClass(FromArrayMethodNotFoundException::class)]
-class ObjectFactoryTest extends TestCase
+class FromArrayDeserializerTest extends TestCase
 {
-    private ObjectFactory $objectFactory;
+    private FromArrayDeserializer $deserializer;
 
     protected function setUp(): void
     {
-        $this->objectFactory = new ObjectFactory();
+        $this->deserializer = new FromArrayDeserializer();
     }
 
     public function testCreatesObjectUsingItsFromArrayMethod(): void
     {
-        $bag = $this->objectFactory->create(ExampleBag::class, [
+        $bag = $this->deserializer->deserialize([
             'name' => 'folios',
             'amount' => 7,
-        ]);
+        ], ExampleBag::class);
 
         $this->assertInstanceOf(ExampleBag::class, $bag);
         $this->assertSame('folios', $bag->getName());
@@ -50,7 +50,7 @@ class ObjectFactoryTest extends TestCase
         $this->expectException(ClassNotFoundException::class);
         $this->expectExceptionMessage('Class Not\Exist\AtAll does not exist.');
 
-        $this->objectFactory->create('Not\Exist\AtAll', []);
+        $this->deserializer->deserialize([], 'Not\Exist\AtAll');
     }
 
     public function testThrowsWhenClassHasNoFromArrayMethod(): void
@@ -61,6 +61,6 @@ class ObjectFactoryTest extends TestCase
             stdClass::class
         ));
 
-        $this->objectFactory->create(stdClass::class, []);
+        $this->deserializer->deserialize([], stdClass::class);
     }
 }

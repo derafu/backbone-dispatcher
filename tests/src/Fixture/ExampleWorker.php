@@ -56,8 +56,8 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * An operation with a required object parameter, hydrated from an array
-     * by the ObjectFactory.
+     * An operation with a required object parameter, deserialized from an
+     * array by the ObjectFactoryRegistry.
      */
     public function describeBag(ExampleBag $bag): array
     {
@@ -68,8 +68,9 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * An operation that returns a domain object (not an array), so the
-     * Dispatcher must flatten it via the Serializer before returning it.
+     * An operation that returns a domain object (not an array). Used to
+     * verify that `DirectDispatcher`/`TypedDispatcher` return it unaltered,
+     * and that `SafeDispatcher` flattens it via the Serializer.
      */
     public function makeGreeting(string $name): ExampleGreeting
     {

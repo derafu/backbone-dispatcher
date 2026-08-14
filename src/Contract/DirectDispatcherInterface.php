@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Contract;
 
 /**
- * Invokes an operation (a public method) of a worker registered in the
+ * Dispatches an operation (a public method) of a worker registered in the
  * backbone package registry.
  *
  * Note: an "operation" here is just the name of a public method of a
@@ -23,11 +23,15 @@ namespace Derafu\BackboneDispatcher\Contract;
  * operation that internally uses one or more real Job objects, or none at
  * all; the dispatcher does not know or care either way.
  *
- * Transport-agnostic: it does not know about HTTP, CLI or Python. Any
- * exception thrown by the invoked operation is not caught here, it is left
- * to propagate so each transport can decide how to translate it.
+ * The most direct of the three dispatchers in this package: no
+ * `OperationRequest`/`OperationResult`/`ProblemDetail`, just the 5 raw
+ * arguments in, whatever the operation returns out. Transport-agnostic: it
+ * does not know about HTTP, CLI or Python. Any exception thrown by the
+ * invoked operation is not caught here, it is left to propagate so each
+ * transport (or `TypedDispatcherInterface`/`SafeDispatcherInterface`) can
+ * decide how to translate it.
  */
-interface DispatcherInterface
+interface DirectDispatcherInterface
 {
     /**
      * Resolves the worker of the package/component and invokes the
@@ -40,7 +44,7 @@ interface DispatcherInterface
      * @param array $params
      * @return mixed
      */
-    public function invoke(
+    public function dispatch(
         string $package,
         string $component,
         string $worker,

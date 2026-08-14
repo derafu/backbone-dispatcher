@@ -13,20 +13,22 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Service;
 
 use Derafu\Backbone\Contract\PackageRegistryInterface;
-use Derafu\BackboneDispatcher\Contract\DispatcherInterface;
-use Derafu\BackboneDispatcher\Contract\SerializerInterface;
+use Derafu\BackboneDispatcher\Contract\DirectDispatcherInterface;
 use Invoker\InvokerInterface;
 
 /**
  * Resolves a worker from the package registry and invokes an operation (a
  * public method) on it with the given parameters.
  *
- * The return value is passed through the SerializerInterface before being
- * returned, so every transport (HTTP, phpy, CLI, ...) gets transport-safe
- * data without having to know the serialization convention of every domain
- * object.
+ * Returns exactly what the operation returned, with no serialization
+ * applied: this is the most direct of the three dispatchers, meant for
+ * callers that are not about to hand the result across a language or
+ * process boundary (e.g. a PHP-only caller that wants to keep working with
+ * the real domain object). Serialization is `SafeDispatcherInterface`'s
+ * responsibility, since it is the tier that actually exists for crossing
+ * such a boundary.
  */
-class Dispatcher implements DispatcherInterface
+class DirectDispatcher implements DirectDispatcherInterface
 {
     /**
      * Constructor with dependencies.
@@ -34,20 +36,18 @@ class Dispatcher implements DispatcherInterface
      * @param PackageRegistryInterface $packageRegistry
      * @param Resolver $resolver
      * @param InvokerInterface $invoker
-     * @param SerializerInterface $serializer
      */
     public function __construct(
         private PackageRegistryInterface $packageRegistry,
         private Resolver $resolver,
         private InvokerInterface $invoker,
-        private SerializerInterface $serializer,
     ) {
     }
 
     /**
      * {@inheritDoc}
      */
-    public function invoke(
+    public function dispatch(
         string $package,
         string $component,
         string $worker,
@@ -63,8 +63,6 @@ class Dispatcher implements DispatcherInterface
 
         $args = $this->resolver->resolve($workerInstance, $operation, $params);
 
-        $result = $this->invoker->call([$workerInstance, $operation], $args);
-
-        return $this->serializer->serialize($result);
+        return $this->invoker->call([$workerInstance, $operation], $args);
     }
 }

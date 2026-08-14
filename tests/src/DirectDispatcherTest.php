@@ -13,13 +13,14 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\Dispatcher;
+use Derafu\BackboneDispatcher\Service\DirectDispatcher;
+use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
 use Derafu\BackboneDispatcher\Service\Inspector;
-use Derafu\BackboneDispatcher\Service\ObjectFactory;
+use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
 use Derafu\BackboneDispatcher\Service\Resolver;
-use Derafu\BackboneDispatcher\Service\Serializer;
 use Derafu\BackboneDispatcher\Service\Validator;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
@@ -31,19 +32,20 @@ use RuntimeException;
 
 /**
  * Integration test: builds a real (small) package/component/worker registry
- * and invokes operations through the real Resolver, real php-di/invoker
- * Invoker, and real Serializer, exactly as a transport (HTTP, phpy) would.
+ * and dispatches operations through the real Resolver and real
+ * php-di/invoker Invoker. No serialization happens here — that is
+ * `SafeDispatcher`'s responsibility, exercised in its own test.
  */
-#[CoversClass(Dispatcher::class)]
+#[CoversClass(DirectDispatcher::class)]
 #[UsesClass(Resolver::class)]
 #[UsesClass(Inspector::class)]
 #[UsesClass(Caster::class)]
-#[UsesClass(ObjectFactory::class)]
+#[UsesClass(ObjectFactoryRegistry::class)]
+#[UsesClass(FromArrayDeserializer::class)]
 #[UsesClass(Validator::class)]
-#[UsesClass(Serializer::class)]
-class DispatcherTest extends TestCase
+class DirectDispatcherTest extends TestCase
 {
-    private Dispatcher $dispatcher;
+    private DirectDispatcher $dispatcher;
 
     protected function setUp(): void
     {
@@ -54,21 +56,20 @@ class DispatcherTest extends TestCase
         $registry = new ExamplePackageRegistry();
         $registry->registerPackage('example_package', $package);
 
-        $this->dispatcher = new Dispatcher(
+        $this->dispatcher = new DirectDispatcher(
             $registry,
             new Resolver(
                 new Inspector(),
-                new Caster(new ObjectFactory()),
+                new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
                 new Validator()
             ),
-            new Invoker(),
-            new Serializer()
+            new Invoker()
         );
     }
 
-    public function testInvokesAnOperationAndReturnsItsScalarResultUnchanged(): void
+    public function testDispatchesAnOperationAndReturnsItsScalarResultUnchanged(): void
     {
-        $result = $this->dispatcher->invoke(
+        $result = $this->dispatcher->dispatch(
             'example_package',
             'example_component',
             'example_worker',
@@ -79,9 +80,9 @@ class DispatcherTest extends TestCase
         $this->assertSame(12, $result);
     }
 
-    public function testInvokesAnOperationWithNamedParametersOutOfOrder(): void
+    public function testDispatchesAnOperationWithNamedParametersOutOfOrder(): void
     {
-        $result = $this->dispatcher->invoke(
+        $result = $this->dispatcher->dispatch(
             'example_package',
             'example_component',
             'example_worker',
@@ -92,9 +93,9 @@ class DispatcherTest extends TestCase
         $this->assertSame(6, $result);
     }
 
-    public function testFlattensADomainObjectReturnedByTheOperationUsingTheSerializer(): void
+    public function testReturnsADomainObjectReturnedByTheOperationUnaltered(): void
     {
-        $result = $this->dispatcher->invoke(
+        $result = $this->dispatcher->dispatch(
             'example_package',
             'example_component',
             'example_worker',
@@ -102,13 +103,8 @@ class DispatcherTest extends TestCase
             ['name' => 'World']
         );
 
-        $this->assertSame([
-            'message' => 'Hello, World!',
-            'reply' => [
-                'message' => 'Hi there!',
-                'reply' => null,
-            ],
-        ], $result);
+        $this->assertInstanceOf(ExampleGreeting::class, $result);
+        $this->assertSame('Hello, World!', $result->getMessage());
     }
 
     public function testPropagatesExceptionsThrownByTheOperationUnaltered(): void
@@ -116,7 +112,7 @@ class DispatcherTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('Something went wrong while running the operation.');
 
-        $this->dispatcher->invoke(
+        $this->dispatcher->dispatch(
             'example_package',
             'example_component',
             'example_worker',

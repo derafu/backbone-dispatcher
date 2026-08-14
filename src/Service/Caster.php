@@ -64,7 +64,7 @@ class Caster
                 return $value;
             }
 
-            return $this->objectFactory->create($to, $value);
+            return $this->objectFactory->create($value, $to);
         }
 
         return $value;
