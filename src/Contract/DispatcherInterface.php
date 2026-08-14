@@ -13,22 +13,30 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Contract;
 
 /**
- * Invokes a job of a worker registered in the backbone package registry.
+ * Invokes an operation (a public method) of a worker registered in the
+ * backbone package registry.
+ *
+ * Note: an "operation" here is just the name of a public method of a
+ * worker, resolved via reflection. It is unrelated to `derafu/backbone`'s
+ * own `JobInterface`/`#[Job]` (a separate, formally registered service type
+ * in the Package/Component/Worker/Job hierarchy) — a worker may expose an
+ * operation that internally uses one or more real Job objects, or none at
+ * all; the dispatcher does not know or care either way.
  *
  * Transport-agnostic: it does not know about HTTP, CLI or Python. Any
- * exception thrown by the invoked job is not caught here, it is left to
- * propagate so each transport can decide how to translate it.
+ * exception thrown by the invoked operation is not caught here, it is left
+ * to propagate so each transport can decide how to translate it.
  */
 interface DispatcherInterface
 {
     /**
-     * Resolves the worker of the package/component and invokes the job
-     * (public method) on it with the given parameters.
+     * Resolves the worker of the package/component and invokes the
+     * operation (public method) on it with the given parameters.
      *
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @param string $job
+     * @param string $operation
      * @param array $params
      * @return mixed
      */
@@ -36,7 +44,7 @@ interface DispatcherInterface
         string $package,
         string $component,
         string $worker,
-        string $job,
+        string $operation,
         array $params = []
     ): mixed;
 }

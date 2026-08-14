@@ -18,7 +18,8 @@ use Derafu\BackboneDispatcher\Exception\MissingParameterException;
 use ReflectionMethod;
 
 /**
- * Resolves the parameters passed to a job.
+ * Resolves the parameters passed to an operation (a public method of a
+ * worker).
  *
  * It is responsible for assigning the parameters in the correct order and
  * validating them. It is transport-agnostic: the caller is responsible for
@@ -42,19 +43,19 @@ class Resolver
     }
 
     /**
-     * Resolves the input data for a job of a worker.
+     * Resolves the input data for an operation of a worker.
      *
      * @param WorkerInterface $workerInstance
-     * @param string $job
+     * @param string $operation
      * @param array $requestParameters
      * @return array
      */
     public function resolve(
         WorkerInterface $workerInstance,
-        string $job,
+        string $operation,
         array $requestParameters
     ): array {
-        $method = new ReflectionMethod($workerInstance, $job);
+        $method = new ReflectionMethod($workerInstance, $operation);
         $parameters = $this->inspector->getParameters($method);
 
         // Validate and get arguments in the correct order.

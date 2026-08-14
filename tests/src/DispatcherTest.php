@@ -31,8 +31,8 @@ use RuntimeException;
 
 /**
  * Integration test: builds a real (small) package/component/worker registry
- * and invokes jobs through the real Resolver, real php-di/invoker Invoker,
- * and real Serializer, exactly as a transport (HTTP, phpy) would.
+ * and invokes operations through the real Resolver, real php-di/invoker
+ * Invoker, and real Serializer, exactly as a transport (HTTP, phpy) would.
  */
 #[CoversClass(Dispatcher::class)]
 #[UsesClass(Resolver::class)]
@@ -66,7 +66,7 @@ class DispatcherTest extends TestCase
         );
     }
 
-    public function testInvokesAJobAndReturnsItsScalarResultUnchanged(): void
+    public function testInvokesAnOperationAndReturnsItsScalarResultUnchanged(): void
     {
         $result = $this->dispatcher->invoke(
             'example_package',
@@ -79,7 +79,7 @@ class DispatcherTest extends TestCase
         $this->assertSame(12, $result);
     }
 
-    public function testInvokesAJobWithNamedParametersOutOfOrder(): void
+    public function testInvokesAnOperationWithNamedParametersOutOfOrder(): void
     {
         $result = $this->dispatcher->invoke(
             'example_package',
@@ -92,7 +92,7 @@ class DispatcherTest extends TestCase
         $this->assertSame(6, $result);
     }
 
-    public function testFlattensADomainObjectReturnedByTheJobUsingTheSerializer(): void
+    public function testFlattensADomainObjectReturnedByTheOperationUsingTheSerializer(): void
     {
         $result = $this->dispatcher->invoke(
             'example_package',
@@ -111,10 +111,10 @@ class DispatcherTest extends TestCase
         ], $result);
     }
 
-    public function testPropagatesExceptionsThrownByTheJobUnaltered(): void
+    public function testPropagatesExceptionsThrownByTheOperationUnaltered(): void
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Something went wrong while running the job.');
+        $this->expectExceptionMessage('Something went wrong while running the operation.');
 
         $this->dispatcher->invoke(
             'example_package',

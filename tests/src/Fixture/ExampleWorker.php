@@ -20,8 +20,11 @@ use RuntimeException;
 
 /**
  * A real worker (uses the actual production traits of `derafu/backbone` and
- * `derafu/config`), with a few real jobs used to exercise the Resolver,
- * Caster, ObjectFactory, and Dispatcher against real, reflectable methods.
+ * `derafu/config`), with a few real operations used to exercise the
+ * Resolver, Caster, ObjectFactory, and Dispatcher against real, reflectable
+ * methods. `JobsAwareTrait` is used here only because `WorkerInterface`
+ * requires it; none of the operations below go through it or relate to a
+ * real `JobInterface` instance.
  */
 class ExampleWorker implements WorkerInterface
 {
@@ -45,7 +48,7 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * A job with a required and an optional scalar parameter.
+     * An operation with a required and an optional scalar parameter.
      */
     public function sum(int $a, int $b = 10): int
     {
@@ -53,8 +56,8 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * A job with a required object parameter, hydrated from an array by the
-     * ObjectFactory.
+     * An operation with a required object parameter, hydrated from an array
+     * by the ObjectFactory.
      */
     public function describeBag(ExampleBag $bag): array
     {
@@ -65,8 +68,8 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * A job that returns a domain object (not an array), so the Dispatcher
-     * must flatten it via the Serializer before returning it.
+     * An operation that returns a domain object (not an array), so the
+     * Dispatcher must flatten it via the Serializer before returning it.
      */
     public function makeGreeting(string $name): ExampleGreeting
     {
@@ -77,11 +80,11 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
-     * A job that always fails, used to verify that the Dispatcher lets a
-     * job's own exceptions propagate unaltered.
+     * An operation that always fails, used to verify that the Dispatcher
+     * lets an operation's own exceptions propagate unaltered.
      */
     public function fail(): never
     {
-        throw new RuntimeException('Something went wrong while running the job.');
+        throw new RuntimeException('Something went wrong while running the operation.');
     }
 }

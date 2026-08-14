@@ -15,7 +15,7 @@ namespace Derafu\BackboneDispatcher\Exception;
 use Derafu\Translation\Exception\Logic\TranslatableInvalidArgumentException;
 
 /**
- * General exception for the resolution of job parameters.
+ * General exception for the resolution of operation parameters.
  */
 class ResolverException extends TranslatableInvalidArgumentException
 {

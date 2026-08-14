@@ -18,8 +18,8 @@ use Derafu\BackboneDispatcher\Contract\SerializerInterface;
 use Invoker\InvokerInterface;
 
 /**
- * Resolves a worker from the package registry and invokes a job (public
- * method) on it with the given parameters.
+ * Resolves a worker from the package registry and invokes an operation (a
+ * public method) on it with the given parameters.
  *
  * The return value is passed through the SerializerInterface before being
  * returned, so every transport (HTTP, phpy, CLI, ...) gets transport-safe
@@ -51,7 +51,7 @@ class Dispatcher implements DispatcherInterface
         string $package,
         string $component,
         string $worker,
-        string $job,
+        string $operation,
         array $params = []
     ): mixed {
         $workerInstance =
@@ -61,9 +61,9 @@ class Dispatcher implements DispatcherInterface
             ->getWorker($worker)
         ;
 
-        $args = $this->resolver->resolve($workerInstance, $job, $params);
+        $args = $this->resolver->resolve($workerInstance, $operation, $params);
 
-        $result = $this->invoker->call([$workerInstance, $job], $args);
+        $result = $this->invoker->call([$workerInstance, $operation], $args);
 
         return $this->serializer->serialize($result);
     }

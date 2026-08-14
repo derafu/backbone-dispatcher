@@ -13,7 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Contract;
 
 /**
- * Converts the value returned by a job into transport-safe data (arrays,
+ * Converts the value returned by an operation into transport-safe data (arrays,
  * scalars, null), so it can be sent as JSON over HTTP, across a phpy
  * boundary, etc. without every transport having to know the serialization
  * convention of every domain object.
