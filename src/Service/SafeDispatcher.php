@@ -45,7 +45,7 @@ class SafeDispatcher implements SafeDispatcherInterface
     public function __construct(
         private readonly TypedDispatcherInterface $typedDispatcher,
         private readonly SerializerInterface $serializer,
-        private readonly string $environment = 'production',
+        private readonly string $environment = 'prod',
         private readonly bool $debug = false,
         private readonly ?string $projectDir = null,
     ) {
