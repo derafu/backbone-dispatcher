@@ -10,7 +10,7 @@ declare(strict_types=1);
  * See LICENSE file for more details.
  */
 
-namespace Derafu\BackboneDispatcher\Service;
+namespace Derafu\BackboneDispatcher\Service\Dispatch;
 
 use Derafu\BackboneDispatcher\Contract\DirectDispatcherInterface;
 use Derafu\BackboneDispatcher\Contract\OperationRequestInterface;
@@ -46,7 +46,7 @@ class TypedDispatcher implements TypedDispatcherInterface
             $request->getComponent(),
             $request->getWorker(),
             $request->getOperation(),
-            $request->getParams()
+            $request->getParameters()
         );
 
         return OperationResult::success($value);

@@ -12,14 +12,15 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
-use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\DirectDispatcher;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\Inspector;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
-use Derafu\BackboneDispatcher\Service\Resolver;
-use Derafu\BackboneDispatcher\Service\TypedDispatcher;
-use Derafu\BackboneDispatcher\Service\Validator;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Dispatch\DirectDispatcher;
+use Derafu\BackboneDispatcher\Service\Dispatch\TypedDispatcher;
+use Derafu\BackboneDispatcher\Service\Policy\AllowAllOperationPolicy;
+use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
+use Derafu\BackboneDispatcher\Service\Resolution\Caster;
+use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
+use Derafu\BackboneDispatcher\Service\Resolution\Validator;
 use Derafu\BackboneDispatcher\ValueObject\OperationRequest;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
@@ -27,15 +28,14 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
-use Invoker\Invoker;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * Integration test: real registry, real Resolver, real Invoker underneath —
- * exercises the two behaviors specific to `TypedDispatcher`: it wraps a
+ * Integration test: real registry and real Resolver underneath — exercises
+ * the two behaviors specific to `TypedDispatcher`: it wraps a
  * successful value in `OperationResult` without serializing it (unlike
  * `SafeDispatcher`), and it does NOT catch exceptions (unlike
  * `SafeDispatcher` either) — they must propagate unaltered.
@@ -48,6 +48,7 @@ use RuntimeException;
 #[UsesClass(ObjectFactoryRegistry::class)]
 #[UsesClass(FromArrayDeserializer::class)]
 #[UsesClass(Validator::class)]
+#[UsesClass(AllowAllOperationPolicy::class)]
 #[UsesClass(OperationRequest::class)]
 #[UsesClass(OperationResult::class)]
 class TypedDispatcherTest extends TestCase
@@ -63,14 +64,16 @@ class TypedDispatcherTest extends TestCase
         $registry = new ExamplePackageRegistry();
         $registry->registerPackage('example_package', $package);
 
+        $inspector = new Inspector();
+
         $directDispatcher = new DirectDispatcher(
             $registry,
+            $inspector,
             new Resolver(
-                new Inspector(),
+                $inspector,
                 new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
                 new Validator()
             ),
-            new Invoker()
         );
 
         $this->dispatcher = new TypedDispatcher($directDispatcher);
@@ -114,7 +117,7 @@ class TypedDispatcherTest extends TestCase
     public function testDoesNotCatchExceptionsThrownByTheOperation(): void
     {
         $request = OperationRequest::fromId(
-            'example_package.example_component.example_worker:fail'
+            'example_package.example_component.example_worker::fail'
         );
 
         $this->expectException(RuntimeException::class);

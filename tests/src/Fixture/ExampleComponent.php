@@ -42,6 +42,11 @@ class ExampleComponent implements ComponentInterface
         return 'Example Component';
     }
 
+    public function getDescription(): ?string
+    {
+        return 'A component holding a fixed set of real workers.';
+    }
+
     public function __toString(): string
     {
         return $this->getName();

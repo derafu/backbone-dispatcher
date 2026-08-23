@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
-use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Resolution\Caster;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\TestWith;

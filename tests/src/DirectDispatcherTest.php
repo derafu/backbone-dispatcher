@@ -12,19 +12,22 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
-use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\DirectDispatcher;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\Inspector;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
-use Derafu\BackboneDispatcher\Service\Resolver;
-use Derafu\BackboneDispatcher\Service\Validator;
+use Derafu\BackboneDispatcher\Exception\OperationNotAllowedException;
+use Derafu\BackboneDispatcher\Exception\OperationNotFoundException;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Dispatch\DirectDispatcher;
+use Derafu\BackboneDispatcher\Service\Policy\AllowAllOperationPolicy;
+use Derafu\BackboneDispatcher\Service\Policy\AllowListOperationPolicy;
+use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
+use Derafu\BackboneDispatcher\Service\Resolution\Caster;
+use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
+use Derafu\BackboneDispatcher\Service\Resolution\Validator;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
-use Invoker\Invoker;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -32,9 +35,9 @@ use RuntimeException;
 
 /**
  * Integration test: builds a real (small) package/component/worker registry
- * and dispatches operations through the real Resolver and real
- * php-di/invoker Invoker. No serialization happens here — that is
- * `SafeDispatcher`'s responsibility, exercised in its own test.
+ * and dispatches operations through the real Resolver, invoking the worker
+ * directly (no invoker library involved). No serialization happens here —
+ * that is `SafeDispatcher`'s responsibility, exercised in its own test.
  */
 #[CoversClass(DirectDispatcher::class)]
 #[UsesClass(Resolver::class)]
@@ -43,9 +46,17 @@ use RuntimeException;
 #[UsesClass(ObjectFactoryRegistry::class)]
 #[UsesClass(FromArrayDeserializer::class)]
 #[UsesClass(Validator::class)]
+#[UsesClass(AllowAllOperationPolicy::class)]
+#[UsesClass(AllowListOperationPolicy::class)]
+#[UsesClass(OperationNotFoundException::class)]
+#[UsesClass(OperationNotAllowedException::class)]
 class DirectDispatcherTest extends TestCase
 {
     private DirectDispatcher $dispatcher;
+
+    private ExamplePackageRegistry $registry;
+
+    private Inspector $inspector;
 
     protected function setUp(): void
     {
@@ -53,17 +64,19 @@ class DirectDispatcherTest extends TestCase
         $component = new ExampleComponent(['example_worker' => $worker]);
         $package = new ExamplePackage(['example_component' => $component]);
 
-        $registry = new ExamplePackageRegistry();
-        $registry->registerPackage('example_package', $package);
+        $this->registry = new ExamplePackageRegistry();
+        $this->registry->registerPackage('example_package', $package);
+
+        $this->inspector = new Inspector();
 
         $this->dispatcher = new DirectDispatcher(
-            $registry,
+            $this->registry,
+            $this->inspector,
             new Resolver(
-                new Inspector(),
+                $this->inspector,
                 new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
                 new Validator()
             ),
-            new Invoker()
         );
     }
 
@@ -118,5 +131,71 @@ class DirectDispatcherTest extends TestCase
             'example_worker',
             'fail'
         );
+    }
+
+    public function testThrowsOperationNotFoundForANonexistentMethod(): void
+    {
+        $this->expectException(OperationNotFoundException::class);
+        $this->expectExceptionMessage(
+            'The operation doesNotExist does not exist in example_package.example_component.example_worker.'
+        );
+
+        $this->dispatcher->dispatch(
+            'example_package',
+            'example_component',
+            'example_worker',
+            'doesNotExist'
+        );
+    }
+
+    public function testThrowsOperationNotAllowedWhenThePolicyRejectsAnExistingOperation(): void
+    {
+        $dispatcher = new DirectDispatcher(
+            $this->registry,
+            $this->inspector,
+            new Resolver(
+                $this->inspector,
+                new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
+                new Validator()
+            ),
+            new AllowListOperationPolicy(['example_package.example_component.example_worker::sum']),
+        );
+
+        $this->expectException(OperationNotAllowedException::class);
+        $this->expectExceptionMessage(
+            'The operation makeGreeting of example_package.example_component.example_worker is not allowed to be dispatched.'
+        );
+
+        $dispatcher->dispatch(
+            'example_package',
+            'example_component',
+            'example_worker',
+            'makeGreeting',
+            ['name' => 'World']
+        );
+    }
+
+    public function testAllowListOperationPolicyStillPermitsTheListedOperation(): void
+    {
+        $dispatcher = new DirectDispatcher(
+            $this->registry,
+            $this->inspector,
+            new Resolver(
+                $this->inspector,
+                new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
+                new Validator()
+            ),
+            new AllowListOperationPolicy(['example_package.example_component.example_worker::sum']),
+        );
+
+        $result = $dispatcher->dispatch(
+            'example_package',
+            'example_component',
+            'example_worker',
+            'sum',
+            ['a' => 5, 'b' => 7]
+        );
+
+        $this->assertSame(12, $result);
     }
 }

@@ -12,11 +12,18 @@ declare(strict_types=1);
 
 namespace Derafu\BackboneDispatcher\Exception;
 
+use Derafu\Translation\Exception\Logic\TranslatableInvalidArgumentException;
+
 /**
  * Exception for an operation identifier that does not match the expected
- * `"package.component.worker:operation"` format.
+ * `"package.component.worker::operation"` format.
+ *
+ * Thrown while parsing the id itself (`OperationRequest::fromId()`), before
+ * a package, component or worker has even been identified — unrelated to
+ * `ResolverException`, which is about resolving the parameters of an
+ * operation that has already been identified.
  */
-class InvalidOperationIdException extends ResolverException
+class InvalidOperationIdException extends TranslatableInvalidArgumentException
 {
     /**
      * Returns a new exception for a malformed operation identifier.
@@ -27,7 +34,7 @@ class InvalidOperationIdException extends ResolverException
     public static function forId(string $id): self
     {
         return new self([
-            'The operation id {id} is not valid. It must have the structure: package.component.worker:operation.',
+            'The operation id {id} is not valid. It must have the structure: package.component.worker::operation.',
             'id' => $id,
         ]);
     }

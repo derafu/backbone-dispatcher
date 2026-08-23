@@ -14,12 +14,12 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
 use Derafu\BackboneDispatcher\Exception\MissingParameterException;
-use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\Inspector;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
-use Derafu\BackboneDispatcher\Service\Resolver;
-use Derafu\BackboneDispatcher\Service\Validator;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
+use Derafu\BackboneDispatcher\Service\Resolution\Caster;
+use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
+use Derafu\BackboneDispatcher\Service\Resolution\Validator;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBagDeserializer;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;

@@ -10,7 +10,7 @@ declare(strict_types=1);
  * See LICENSE file for more details.
  */
 
-namespace Derafu\BackboneDispatcher\Service;
+namespace Derafu\BackboneDispatcher\Service\Deserialization;
 
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;

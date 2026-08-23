@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
-use Derafu\BackboneDispatcher\Service\Serializer;
+use Derafu\BackboneDispatcher\Service\Serialization\Serializer;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use PHPUnit\Framework\Attributes\CoversClass;

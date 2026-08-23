@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher\Fixture;
 
+use Derafu\Backbone\Attribute\Operation;
 use Derafu\Backbone\Contract\WorkerInterface;
 use Derafu\Backbone\Trait\HandlersAwareTrait;
 use Derafu\Backbone\Trait\JobsAwareTrait;
@@ -42,14 +43,33 @@ class ExampleWorker implements WorkerInterface
         return 'Example Worker';
     }
 
+    public function getDescription(): ?string
+    {
+        return 'A worker with a few real, reflectable operations.';
+    }
+
     public function __toString(): string
     {
         return $this->getName();
     }
 
     /**
-     * An operation with a required and an optional scalar parameter.
+     * An operation with a required and an optional scalar parameter, tagged
+     * as an operation — used to exercise `Inspector::hasOperationAttribute()`,
+     * `TaggedOperationPolicy`, and the `#[Operation]` overrides
+     * (`name`/`description`/`parameters`) on top of this very PHPDoc.
      */
+    #[Operation(
+        name: 'Sum',
+        description: 'Adds two integers together.',
+        parameters: [
+            'a' => ['example' => 5],
+            'b' => ['description' => 'The addend, defaults to 10.'],
+        ],
+        results: [
+            'success' => ['description' => 'The sum of a and b.', 'example' => 15],
+        ],
+    )]
     public function sum(int $a, int $b = 10): int
     {
         return $a + $b;

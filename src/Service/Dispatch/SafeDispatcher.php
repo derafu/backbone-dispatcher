@@ -10,7 +10,7 @@ declare(strict_types=1);
  * See LICENSE file for more details.
  */
 
-namespace Derafu\BackboneDispatcher\Service;
+namespace Derafu\BackboneDispatcher\Service\Dispatch;
 
 use Derafu\BackboneDispatcher\Contract\OperationRequestInterface;
 use Derafu\BackboneDispatcher\Contract\OperationResultInterface;

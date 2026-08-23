@@ -12,16 +12,17 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
-use Derafu\BackboneDispatcher\Service\Caster;
-use Derafu\BackboneDispatcher\Service\DirectDispatcher;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\Inspector;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
-use Derafu\BackboneDispatcher\Service\Resolver;
-use Derafu\BackboneDispatcher\Service\SafeDispatcher;
-use Derafu\BackboneDispatcher\Service\Serializer;
-use Derafu\BackboneDispatcher\Service\TypedDispatcher;
-use Derafu\BackboneDispatcher\Service\Validator;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Dispatch\DirectDispatcher;
+use Derafu\BackboneDispatcher\Service\Dispatch\SafeDispatcher;
+use Derafu\BackboneDispatcher\Service\Dispatch\TypedDispatcher;
+use Derafu\BackboneDispatcher\Service\Policy\AllowAllOperationPolicy;
+use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
+use Derafu\BackboneDispatcher\Service\Resolution\Caster;
+use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
+use Derafu\BackboneDispatcher\Service\Resolution\Validator;
+use Derafu\BackboneDispatcher\Service\Serialization\Serializer;
 use Derafu\BackboneDispatcher\ValueObject\OperationRequest;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\BackboneDispatcher\ValueObject\ProblemDetail;
@@ -30,16 +31,15 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
-use Invoker\Invoker;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Integration test: real registry, real Resolver, real Invoker, real
- * TypedDispatcher and Serializer underneath — exercises the one behavior
- * that only `SafeDispatcher` has: it never throws, and it is the only
- * tier that flattens domain objects via the Serializer.
+ * Integration test: real registry, real Resolver, real TypedDispatcher and
+ * Serializer underneath — exercises the one behavior that only
+ * `SafeDispatcher` has: it never throws, and it is the only tier that
+ * flattens domain objects via the Serializer.
  */
 #[CoversClass(SafeDispatcher::class)]
 #[UsesClass(TypedDispatcher::class)]
@@ -50,6 +50,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(ObjectFactoryRegistry::class)]
 #[UsesClass(FromArrayDeserializer::class)]
 #[UsesClass(Validator::class)]
+#[UsesClass(AllowAllOperationPolicy::class)]
 #[UsesClass(Serializer::class)]
 #[UsesClass(OperationRequest::class)]
 #[UsesClass(OperationResult::class)]
@@ -68,14 +69,16 @@ class SafeDispatcherTest extends TestCase
         $registry = new ExamplePackageRegistry();
         $registry->registerPackage('example_package', $package);
 
+        $inspector = new Inspector();
+
         $directDispatcher = new DirectDispatcher(
             $registry,
+            $inspector,
             new Resolver(
-                new Inspector(),
+                $inspector,
                 new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
                 new Validator()
             ),
-            new Invoker()
         );
 
         $this->dispatcher = new SafeDispatcher(
@@ -128,7 +131,7 @@ class SafeDispatcherTest extends TestCase
     public function testNeverThrowsAndReturnsAFailureOperationResultInstead(): void
     {
         $request = OperationRequest::fromId(
-            'example_package.example_component.example_worker:fail'
+            'example_package.example_component.example_worker::fail'
         );
 
         $result = $this->dispatcher->dispatch($request);
@@ -143,7 +146,7 @@ class SafeDispatcherTest extends TestCase
             $problem->getDetail()
         );
         $this->assertSame(
-            'example_package.example_component.example_worker:fail',
+            'example_package.example_component.example_worker::fail',
             $problem->getInstance()
         );
         $this->assertSame('RuntimeException', $problem->getThrowable()->getClass());

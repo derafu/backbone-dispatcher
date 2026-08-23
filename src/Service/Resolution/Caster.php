@@ -10,7 +10,7 @@ declare(strict_types=1);
  * See LICENSE file for more details.
  */
 
-namespace Derafu\BackboneDispatcher\Service;
+namespace Derafu\BackboneDispatcher\Service\Resolution;
 
 use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
 

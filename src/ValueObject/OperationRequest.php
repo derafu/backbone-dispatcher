@@ -27,14 +27,14 @@ use Derafu\BackboneDispatcher\Exception\InvalidOperationIdException;
 class OperationRequest implements OperationRequestInterface
 {
     /**
-     * @param array<string, mixed> $params
+     * @param array<string, mixed> $parameters
      */
     public function __construct(
         private readonly string $package,
         private readonly string $component,
         private readonly string $worker,
         private readonly string $operation,
-        private readonly array $params = []
+        private readonly array $parameters = []
     ) {
     }
 
@@ -61,21 +61,27 @@ class OperationRequest implements OperationRequestInterface
     /**
      * @return array<string, mixed>
      */
-    public function getParams(): array
+    public function getParameters(): array
     {
-        return $this->params;
+        return $this->parameters;
     }
 
     /**
-     * The `"package.component.worker:operation"` identifier for this
+     * The `"package.component.worker::operation"` identifier for this
      * request, e.g. for use as a `ProblemDetail::getInstance()` value.
+     *
+     * `::` (not a single `:`) on purpose: `derafu/backbone` already uses a
+     * single `:` for its own `.job:name`/`.handler:name`/`.strategy:name`
+     * ids — this identifier is a dispatcher-only concept, unrelated to
+     * that family, and `::` keeps it visually distinct instead of looking
+     * like a fourth member of it.
      *
      * @return string
      */
     public function getId(): string
     {
         return sprintf(
-            '%s.%s.%s:%s',
+            '%s.%s.%s::%s',
             $this->package,
             $this->component,
             $this->worker,
@@ -84,18 +90,18 @@ class OperationRequest implements OperationRequestInterface
     }
 
     /**
-     * Builds an `OperationRequest` from its `"package.component.worker:operation"`
+     * Builds an `OperationRequest` from its `"package.component.worker::operation"`
      * identifier plus the parameters to call it with — the shape a caller
      * on the other side of a boundary (e.g. the Python bridge) would
-     * naturally send: one id string, one params bag.
+     * naturally send: one id string, one parameters bag.
      *
      * @param string $id
-     * @param array<string, mixed> $params
+     * @param array<string, mixed> $parameters
      * @return self
      */
-    public static function fromId(string $id, array $params = []): self
+    public static function fromId(string $id, array $parameters = []): self
     {
-        $parts = explode(':', $id, 2);
+        $parts = explode('::', $id, 2);
         if (count($parts) !== 2) {
             throw InvalidOperationIdException::forId($id);
         }
@@ -111,6 +117,6 @@ class OperationRequest implements OperationRequestInterface
             throw InvalidOperationIdException::forId($id);
         }
 
-        return new self($package, $component, $worker, $operation, $params);
+        return new self($package, $component, $worker, $operation, $parameters);
     }
 }

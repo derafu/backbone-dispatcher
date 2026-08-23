@@ -56,7 +56,7 @@ interface ProblemDetailInterface extends Stringable, JsonSerializable
      *
      * In `derafu/http` this is a URI (the request path). Here it identifies
      * the operation that was being dispatched, e.g.
-     * `"package.component.worker:operation"`.
+     * `"package.component.worker::operation"`.
      *
      * @return string|null
      */

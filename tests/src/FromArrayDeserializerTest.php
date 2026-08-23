@@ -14,7 +14,7 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;

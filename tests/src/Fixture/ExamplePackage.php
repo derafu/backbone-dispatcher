@@ -42,6 +42,11 @@ class ExamplePackage implements PackageInterface
         return 'Example Package';
     }
 
+    public function getDescription(): ?string
+    {
+        return 'A package holding a fixed set of real components.';
+    }
+
     public function __toString(): string
     {
         return $this->getName();

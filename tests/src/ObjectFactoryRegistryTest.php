@@ -13,8 +13,8 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException;
-use Derafu\BackboneDispatcher\Service\FromArrayDeserializer;
-use Derafu\BackboneDispatcher\Service\ObjectFactoryRegistry;
+use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
+use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBagDeserializer;
 use PHPUnit\Framework\Attributes\CoversClass;

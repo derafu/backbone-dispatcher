@@ -30,10 +30,10 @@ interface OperationRequestInterface
     /**
      * @return array<string, mixed>
      */
-    public function getParams(): array;
+    public function getParameters(): array;
 
     /**
-     * The `"package.component.worker:operation"` identifier for this
+     * The `"package.component.worker::operation"` identifier for this
      * request, e.g. for use as a `ProblemDetailInterface::getInstance()`
      * value.
      *

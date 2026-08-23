@@ -10,12 +10,12 @@ declare(strict_types=1);
  * See LICENSE file for more details.
  */
 
-namespace Derafu\BackboneDispatcher\Service;
+namespace Derafu\BackboneDispatcher\Service\Resolution;
 
 use Derafu\Backbone\Contract\WorkerInterface;
+use Derafu\BackboneDispatcher\Contract\InspectorInterface;
 use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
 use Derafu\BackboneDispatcher\Exception\MissingParameterException;
-use ReflectionMethod;
 
 /**
  * Resolves the parameters passed to an operation (a public method of a
@@ -31,12 +31,12 @@ class Resolver
     /**
      * Constructor with dependencies.
      *
-     * @param Inspector $inspector
+     * @param InspectorInterface $inspector
      * @param Caster $caster
      * @param Validator $validator
      */
     public function __construct(
-        private Inspector $inspector,
+        private InspectorInterface $inspector,
         private Caster $caster,
         private Validator $validator
     ) {
@@ -55,8 +55,7 @@ class Resolver
         string $operation,
         array $requestParameters
     ): array {
-        $method = new ReflectionMethod($workerInstance, $operation);
-        $parameters = $this->inspector->getParameters($method);
+        $parameters = $this->inspector->getOperationParameters($workerInstance, $operation);
 
         // Validate and get arguments in the correct order.
         $args = [];
