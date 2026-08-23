@@ -286,4 +286,173 @@ class ExplorerTest extends TestCase
 
         $explorer->describe('example_package.example_component.example_worker::doesNotExist');
     }
+
+    public function testTreeWithNullIdNestsEveryLevelDownToOperations(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $tree = $explorer->tree();
+
+        $this->assertSame('example_package', $tree[0]['id']);
+        $component = $tree[0]['components'][0];
+        $this->assertSame('example_package.example_component', $component['id']);
+        $worker = $component['workers'][0];
+        $this->assertSame('example_package.example_component.example_worker', $worker['id']);
+        $operationNames = array_column($worker['operations'], 'name');
+        $this->assertContains('sum', $operationNames);
+    }
+
+    public function testTreeAtEachLevelMatchesDescribePlusItsOwnChildrenKey(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $packageTree = $explorer->tree('example_package');
+        $this->assertSame(
+            $explorer->describe('example_package'),
+            array_diff_key($packageTree, ['components' => null])
+        );
+        $this->assertArrayHasKey('components', $packageTree);
+
+        $componentTree = $explorer->tree('example_package.example_component');
+        $this->assertSame(
+            $explorer->describe('example_package.example_component'),
+            array_diff_key($componentTree, ['workers' => null])
+        );
+        $this->assertArrayHasKey('workers', $componentTree);
+
+        $workerTree = $explorer->tree('example_package.example_component.example_worker');
+        $this->assertSame(
+            $explorer->describe('example_package.example_component.example_worker'),
+            array_diff_key($workerTree, ['operations' => null])
+        );
+        $this->assertArrayHasKey('operations', $workerTree);
+    }
+
+    public function testTreeWithAnOperationIdHasNoChildrenAndMatchesDescribe(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $this->assertSame(
+            $explorer->describe('example_package.example_component.example_worker::sum'),
+            $explorer->tree('example_package.example_component.example_worker::sum')
+        );
+    }
+
+    public function testTreePropagatesTheSameValidationAsDescribe(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $this->expectException(InvalidDiscoveryIdException::class);
+
+        $explorer->tree('a.b.c.d');
+    }
+
+    public function testTreePropagatesOperationExceptionsForAnIdWithAnOperation(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $this->expectException(OperationNotFoundException::class);
+
+        $explorer->tree('example_package.example_component.example_worker::doesNotExist');
+    }
+
+    public function testTreePrunesOperationsButKeepsTheBranchWhenAtLeastOneSurvives(): void
+    {
+        $explorer = new Explorer(
+            $this->registry,
+            $this->inspector,
+            new AllowListOperationPolicy(['example_package.example_component.example_worker::sum']),
+        );
+
+        $tree = $explorer->tree();
+
+        $worker = $tree[0]['components'][0]['workers'][0];
+        $this->assertSame(['sum'], array_column($worker['operations'], 'name'));
+    }
+
+    public function testTreeIsCompletelyEmptyWhenNoOperationIsAllowed(): void
+    {
+        $explorer = new Explorer(
+            $this->registry,
+            $this->inspector,
+            new AllowListOperationPolicy(['other_package.*']),
+        );
+
+        $this->assertSame([], $explorer->tree());
+    }
+
+    /**
+     * Two packages, one with a component holding an allowed worker next to
+     * a pruned one, and the other package with nothing allowed at all —
+     * proves pruning happens per-branch, not "all or nothing": a sibling
+     * with at least one allowed operation must survive even while another
+     * sibling at the very same level is dropped.
+     */
+    private function buildMixedRegistry(): ExamplePackageRegistry
+    {
+        $mixedComponent = new ExampleComponent([
+            'allowed_worker' => new ExampleWorker(),
+            'pruned_worker' => new ExampleWorker(),
+        ]);
+        $emptyComponent = new ExampleComponent([
+            'only_worker' => new ExampleWorker(),
+        ]);
+        $mixedPackage = new ExamplePackage([
+            'mixed_component' => $mixedComponent,
+            'empty_component' => $emptyComponent,
+        ]);
+        $emptyPackage = new ExamplePackage([
+            'only_component' => new ExampleComponent([
+                'only_worker' => new ExampleWorker(),
+            ]),
+        ]);
+
+        $registry = new ExamplePackageRegistry();
+        $registry->registerPackage('mixed_package', $mixedPackage);
+        $registry->registerPackage('empty_package', $emptyPackage);
+
+        return $registry;
+    }
+
+    public function testGetWorkersGetComponentsAndGetPackagesKeepOnlySiblingsWithAllowedOperations(): void
+    {
+        $explorer = new Explorer(
+            $this->buildMixedRegistry(),
+            $this->inspector,
+            new AllowListOperationPolicy(['mixed_package.mixed_component.allowed_worker::sum']),
+        );
+
+        $this->assertSame(
+            ['mixed_package.mixed_component.allowed_worker'],
+            array_column($explorer->getWorkers('mixed_package', 'mixed_component'), 'id')
+        );
+        $this->assertSame(
+            ['mixed_package.mixed_component'],
+            array_column($explorer->getComponents('mixed_package'), 'id')
+        );
+        $this->assertSame(
+            ['mixed_package'],
+            array_column($explorer->getPackages(), 'id')
+        );
+    }
+
+    public function testTreePrunesOnlyTheEmptySiblingsAtEveryLevel(): void
+    {
+        $explorer = new Explorer(
+            $this->buildMixedRegistry(),
+            $this->inspector,
+            new AllowListOperationPolicy(['mixed_package.mixed_component.allowed_worker::sum']),
+        );
+
+        $tree = $explorer->tree();
+
+        $this->assertSame(['mixed_package'], array_column($tree, 'id'));
+
+        $components = $tree[0]['components'];
+        $this->assertSame(['mixed_package.mixed_component'], array_column($components, 'id'));
+
+        $workers = $components[0]['workers'];
+        $this->assertSame(['mixed_package.mixed_component.allowed_worker'], array_column($workers, 'id'));
+        $this->assertSame(['sum'], array_column($workers[0]['operations'], 'name'));
+    }
 }

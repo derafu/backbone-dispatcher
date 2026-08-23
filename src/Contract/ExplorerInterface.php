@@ -126,4 +126,16 @@ interface ExplorerInterface
      * @return array
      */
     public function describe(?string $id = null): array;
+
+    /**
+     * Same resolution as `describe()`, but every level nests its children
+     * underneath instead of stopping at that one node — a package comes
+     * back with its `components`, each of those with its own `workers`,
+     * each of those with its own `operations`. An operation id resolves
+     * exactly like `describe()`, since operations have no children to nest.
+     *
+     * @param string|null $id
+     * @return array
+     */
+    public function tree(?string $id = null): array;
 }
