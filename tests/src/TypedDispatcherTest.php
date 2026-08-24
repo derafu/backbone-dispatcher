@@ -21,6 +21,7 @@ use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
 use Derafu\BackboneDispatcher\Service\Resolution\Caster;
 use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
 use Derafu\BackboneDispatcher\Service\Resolution\Validator;
+use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\BackboneDispatcher\ValueObject\OperationRequest;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
@@ -51,6 +52,7 @@ use RuntimeException;
 #[UsesClass(AllowAllOperationPolicy::class)]
 #[UsesClass(OperationRequest::class)]
 #[UsesClass(OperationResult::class)]
+#[UsesClass(ExecutionMetadata::class)]
 class TypedDispatcherTest extends TestCase
 {
     private TypedDispatcher $dispatcher;
@@ -94,6 +96,7 @@ class TypedDispatcherTest extends TestCase
         $this->assertTrue($result->isSuccess());
         $this->assertSame(12, $result->getValue());
         $this->assertNull($result->getProblem());
+        $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
     }
 
     public function testDoesNotSerializeADomainObjectReturnedByTheOperation(): void

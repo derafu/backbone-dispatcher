@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\BackboneDispatcher\ValueObject;
 
+use Derafu\BackboneDispatcher\Contract\ExecutionMetadataInterface;
 use Derafu\BackboneDispatcher\Contract\OperationResultInterface;
 use Derafu\BackboneDispatcher\Contract\ProblemDetailInterface;
 
@@ -25,7 +26,8 @@ class OperationResult implements OperationResultInterface
     private function __construct(
         private readonly bool $success,
         private readonly mixed $value,
-        private readonly ?ProblemDetailInterface $problem
+        private readonly ?ProblemDetailInterface $problem,
+        private readonly ExecutionMetadataInterface $metadata
     ) {
     }
 
@@ -45,15 +47,25 @@ class OperationResult implements OperationResultInterface
      * reads `getValue()` directly and keeps working with the real object,
      * never encoding it), `$value` can be exactly what the worker
      * returned — there is no need to serialize it up front for that case.
+     * @param ExecutionMetadataInterface $metadata Statistics about
+     * whatever scope of work the caller measured to produce `$value`.
      */
-    public static function success(mixed $value): self
+    public static function success(mixed $value, ExecutionMetadataInterface $metadata): self
     {
-        return new self(success: true, value: $value, problem: null);
+        return new self(success: true, value: $value, problem: null, metadata: $metadata);
     }
 
-    public static function failure(ProblemDetailInterface $problem): self
-    {
-        return new self(success: false, value: null, problem: $problem);
+    /**
+     * @param ProblemDetailInterface $problem
+     * @param ExecutionMetadataInterface $metadata Statistics about
+     * whatever scope of work the caller measured up to the failure.
+     * @return self
+     */
+    public static function failure(
+        ProblemDetailInterface $problem,
+        ExecutionMetadataInterface $metadata
+    ): self {
+        return new self(success: false, value: null, problem: $problem, metadata: $metadata);
     }
 
     public function isSuccess(): bool
@@ -80,12 +92,21 @@ class OperationResult implements OperationResultInterface
     /**
      * {@inheritDoc}
      */
+    public function getMetadata(): ExecutionMetadataInterface
+    {
+        return $this->metadata;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function toArray(): array
     {
         return [
             'success' => $this->success,
             'value' => $this->value,
             'problem' => $this->problem,
+            'metadata' => $this->metadata,
         ];
     }
 

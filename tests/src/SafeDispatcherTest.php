@@ -23,6 +23,7 @@ use Derafu\BackboneDispatcher\Service\Resolution\Caster;
 use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
 use Derafu\BackboneDispatcher\Service\Resolution\Validator;
 use Derafu\BackboneDispatcher\Service\Serialization\Serializer;
+use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\BackboneDispatcher\ValueObject\OperationRequest;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\BackboneDispatcher\ValueObject\ProblemDetail;
@@ -56,6 +57,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(OperationResult::class)]
 #[UsesClass(ProblemDetail::class)]
 #[UsesClass(SafeThrowable::class)]
+#[UsesClass(ExecutionMetadata::class)]
 class SafeDispatcherTest extends TestCase
 {
     private SafeDispatcher $dispatcher;
@@ -104,6 +106,8 @@ class SafeDispatcherTest extends TestCase
         $this->assertTrue($result->isSuccess());
         $this->assertSame(12, $result->getValue());
         $this->assertNull($result->getProblem());
+        $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
+        $this->assertSame(getmypid(), $result->getMetadata()->getPid());
     }
 
     public function testFlattensADomainObjectReturnedByTheOperationUsingTheSerializer(): void
@@ -150,5 +154,6 @@ class SafeDispatcherTest extends TestCase
             $problem->getInstance()
         );
         $this->assertSame('RuntimeException', $problem->getThrowable()->getClass());
+        $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
     }
 }

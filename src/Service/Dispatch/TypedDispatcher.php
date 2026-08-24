@@ -16,6 +16,7 @@ use Derafu\BackboneDispatcher\Contract\DirectDispatcherInterface;
 use Derafu\BackboneDispatcher\Contract\OperationRequestInterface;
 use Derafu\BackboneDispatcher\Contract\OperationResultInterface;
 use Derafu\BackboneDispatcher\Contract\TypedDispatcherInterface;
+use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 
 /**
@@ -24,10 +25,15 @@ use Derafu\BackboneDispatcher\ValueObject\OperationResult;
  * value.
  *
  * Does not resolve, invoke or serialize anything itself: all of that is
- * `DirectDispatcherInterface`'s job. This class only converts types on the
+ * `DirectDispatcherInterface`'s job, this class only converts types on the
  * way in and on the way out. It does not catch exceptions either — that is
  * `SafeDispatcherInterface`'s job, which wraps this class rather than
  * duplicating it.
+ *
+ * It does measure execution, though: `DirectDispatcherInterface::dispatch()`
+ * is real work (resolving parameters, invoking the worker), and
+ * `OperationResultInterface::getMetadata()` is never optional — every
+ * producer of one measures its own scope, this one included.
  */
 class TypedDispatcher implements TypedDispatcherInterface
 {
@@ -41,6 +47,11 @@ class TypedDispatcher implements TypedDispatcherInterface
      */
     public function dispatch(OperationRequestInterface $request): OperationResultInterface
     {
+        $startedAt = date(DATE_ATOM);
+        $monotonicStart = hrtime(true);
+        $startMemory = memory_get_usage(true);
+        $startCpuUsage = getrusage();
+
         $value = $this->directDispatcher->dispatch(
             $request->getPackage(),
             $request->getComponent(),
@@ -49,6 +60,8 @@ class TypedDispatcher implements TypedDispatcherInterface
             $request->getParameters()
         );
 
-        return OperationResult::success($value);
+        $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
+
+        return OperationResult::success($value, $metadata);
     }
 }

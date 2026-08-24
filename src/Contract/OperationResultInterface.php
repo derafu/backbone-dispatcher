@@ -22,6 +22,11 @@ use JsonSerializable;
  * Construction (`success()`/`failure()`) is intentionally NOT part of this
  * interface: it's a named-constructor concern of the concrete
  * `OperationResult`, not part of the contract callers consume.
+ *
+ * Unrelated to `DiscoveryResultInterface`, which mirrors this same shape for
+ * `SafeExplorerInterface` (exploring the package tree) instead of dispatching
+ * — the two are kept independent so this one stays free to grow
+ * operation-specific data later without affecting the other.
  */
 interface OperationResultInterface extends JsonSerializable
 {
@@ -36,6 +41,14 @@ interface OperationResultInterface extends JsonSerializable
     public function getValue(): mixed;
 
     public function getProblem(): ?ProblemDetailInterface;
+
+    /**
+     * @return ExecutionMetadataInterface Statistics about the execution
+     * that produced this result. Always present, success or failure —
+     * every producer of an `OperationResultInterface` measures its own
+     * scope of work, not only `SafeDispatcherInterface`.
+     */
+    public function getMetadata(): ExecutionMetadataInterface;
 
     /**
      * Converts the operation result to an array.

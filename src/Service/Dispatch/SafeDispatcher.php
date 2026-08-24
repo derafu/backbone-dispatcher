@@ -18,6 +18,7 @@ use Derafu\BackboneDispatcher\Contract\ProblemDetailInterface;
 use Derafu\BackboneDispatcher\Contract\SafeDispatcherInterface;
 use Derafu\BackboneDispatcher\Contract\SerializerInterface;
 use Derafu\BackboneDispatcher\Contract\TypedDispatcherInterface;
+use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\BackboneDispatcher\ValueObject\ProblemDetail;
 use Derafu\BackboneDispatcher\ValueObject\SafeThrowable;
@@ -56,14 +57,21 @@ class SafeDispatcher implements SafeDispatcherInterface
      */
     public function dispatch(OperationRequestInterface $request): OperationResultInterface
     {
+        $startedAt = date(DATE_ATOM);
+        $monotonicStart = hrtime(true);
+        $startMemory = memory_get_usage(true);
+        $startCpuUsage = getrusage();
+
         try {
             $result = $this->typedDispatcher->dispatch($request);
+            $value = $this->serializer->serialize($result->getValue());
+            $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
 
-            return OperationResult::success(
-                $this->serializer->serialize($result->getValue())
-            );
+            return OperationResult::success($value, $metadata);
         } catch (Throwable $e) {
-            return OperationResult::failure($this->buildProblem($e, $request));
+            $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
+
+            return OperationResult::failure($this->buildProblem($e, $request), $metadata);
         }
     }
 
