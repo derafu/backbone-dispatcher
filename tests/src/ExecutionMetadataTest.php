@@ -41,6 +41,22 @@ class ExecutionMetadataTest extends TestCase
         );
     }
 
+    public function testTimestampIsARealUnixEpochMatchingFinishedAt(): void
+    {
+        [$startedAt, $monotonicStart, $startMemory, $startCpuUsage] = $this->startMeasuring();
+
+        $before = microtime(true);
+        $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
+        $after = microtime(true);
+
+        $this->assertGreaterThanOrEqual($before, $metadata->getTimestamp());
+        $this->assertLessThanOrEqual($after, $metadata->getTimestamp());
+        $this->assertSame(
+            strtotime($metadata->getFinishedAt()),
+            (int) $metadata->getTimestamp()
+        );
+    }
+
     public function testRealTimeAndCpuTimesAreNeverNegative(): void
     {
         [$startedAt, $monotonicStart, $startMemory, $startCpuUsage] = $this->startMeasuring();
@@ -96,6 +112,7 @@ class ExecutionMetadataTest extends TestCase
             [
                 'startedAt',
                 'finishedAt',
+                'timestamp',
                 'realTime',
                 'userTime',
                 'systemTime',

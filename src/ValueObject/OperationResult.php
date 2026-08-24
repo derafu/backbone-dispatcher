@@ -27,7 +27,8 @@ class OperationResult implements OperationResultInterface
         private readonly bool $success,
         private readonly mixed $value,
         private readonly ?ProblemDetailInterface $problem,
-        private readonly ExecutionMetadataInterface $metadata
+        private readonly ExecutionMetadataInterface $metadata,
+        private readonly ?string $dataType
     ) {
     }
 
@@ -49,10 +50,19 @@ class OperationResult implements OperationResultInterface
      * returned — there is no need to serialize it up front for that case.
      * @param ExecutionMetadataInterface $metadata Statistics about
      * whatever scope of work the caller measured to produce `$value`.
+     * @param string $dataType `$value`'s type *before* it was serialized
+     * (if it was) — see `OperationResultInterface::getDataType()`. Always
+     * required here (unlike `getDataType()`'s own `?string` return): a
+     * producer of a successful result always has the pre-serialization
+     * value on hand to compute it from, so there is no legitimate "I don't
+     * know" case the way there is for a failure.
      */
-    public static function success(mixed $value, ExecutionMetadataInterface $metadata): self
-    {
-        return new self(success: true, value: $value, problem: null, metadata: $metadata);
+    public static function success(
+        mixed $value,
+        ExecutionMetadataInterface $metadata,
+        string $dataType
+    ): self {
+        return new self(success: true, value: $value, problem: null, metadata: $metadata, dataType: $dataType);
     }
 
     /**
@@ -65,7 +75,7 @@ class OperationResult implements OperationResultInterface
         ProblemDetailInterface $problem,
         ExecutionMetadataInterface $metadata
     ): self {
-        return new self(success: false, value: null, problem: $problem, metadata: $metadata);
+        return new self(success: false, value: null, problem: $problem, metadata: $metadata, dataType: null);
     }
 
     public function isSuccess(): bool
@@ -92,6 +102,14 @@ class OperationResult implements OperationResultInterface
     /**
      * {@inheritDoc}
      */
+    public function getDataType(): ?string
+    {
+        return $this->dataType;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     public function getMetadata(): ExecutionMetadataInterface
     {
         return $this->metadata;
@@ -107,6 +125,7 @@ class OperationResult implements OperationResultInterface
             'value' => $this->value,
             'problem' => $this->problem,
             'metadata' => $this->metadata,
+            'dataType' => $this->dataType,
         ];
     }
 

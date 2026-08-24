@@ -39,6 +39,20 @@ interface ExecutionMetadataInterface extends JsonSerializable
     public function getFinishedAt(): string;
 
     /**
+     * The same moment as `getFinishedAt()`, as a Unix timestamp (seconds
+     * since the epoch, with sub-second precision) instead of `DATE_ATOM` —
+     * the flexible, directly-sortable/arithmetic-friendly representation a
+     * transport-level response envelope (`meta.timestamp` in both the HTTP
+     * API and the console bridge) uses, rather than `getFinishedAt()`'s
+     * human-readable string. `ProblemDetailInterface::getTimestamp()`
+     * reuses this exact value (not a separate `microtime(true)` call) so
+     * both are always identical for the same dispatch.
+     *
+     * @return float
+     */
+    public function getTimestamp(): float;
+
+    /**
      * @return float Wall-clock seconds elapsed, measured with a monotonic
      * clock (`hrtime()`) — the "real" of `time`. Includes time spent
      * waiting on I/O (network, disk, a database).

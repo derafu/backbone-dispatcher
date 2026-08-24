@@ -78,11 +78,16 @@ interface ProblemDetailInterface extends Stringable, JsonSerializable
     public function getContext(): array;
 
     /**
-     * Gets when the error occurred.
+     * Gets when the error occurred, as a Unix timestamp (seconds since the
+     * epoch, with sub-second precision) — the same representation and, for
+     * `SafeDispatcherInterface`'s failures, the exact same value as
+     * `ExecutionMetadataInterface::getTimestamp()`, so a transport-level
+     * response envelope never has to reconcile two different clock
+     * readings for what is conceptually the same moment.
      *
-     * @return string
+     * @return float
      */
-    public function getTimestamp(): string;
+    public function getTimestamp(): float;
 
     /**
      * Gets the application environment.

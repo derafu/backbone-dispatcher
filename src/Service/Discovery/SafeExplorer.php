@@ -177,7 +177,7 @@ class SafeExplorer implements SafeExplorerInterface
         return new ProblemDetail(
             detail: $e->getMessage(),
             throwable: SafeThrowable::fromThrowable($e, $this->projectDir),
-            timestamp: date(DATE_ATOM),
+            timestamp: microtime(true),
             environment: $this->environment,
             instance: $instance,
             debug: $this->debug,

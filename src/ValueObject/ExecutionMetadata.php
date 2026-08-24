@@ -23,6 +23,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     private function __construct(
         private readonly string $startedAt,
         private readonly string $finishedAt,
+        private readonly float $timestamp,
         private readonly float $realTime,
         private readonly float $userTime,
         private readonly float $systemTime,
@@ -65,6 +66,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
         return new self(
             startedAt: $startedAt,
             finishedAt: date(DATE_ATOM),
+            timestamp: microtime(true),
             realTime: (hrtime(true) - $monotonicStart) / 1_000_000_000,
             userTime: self::cpuSeconds($endCpuUsage, 'ru_utime')
                 - self::cpuSeconds($startCpuUsage, 'ru_utime'),
@@ -106,6 +108,14 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     public function getFinishedAt(): string
     {
         return $this->finishedAt;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getTimestamp(): float
+    {
+        return $this->timestamp;
     }
 
     /**
@@ -188,6 +198,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
         return [
             'startedAt' => $this->startedAt,
             'finishedAt' => $this->finishedAt,
+            'timestamp' => $this->timestamp,
             'realTime' => $this->realTime,
             'userTime' => $this->userTime,
             'systemTime' => $this->systemTime,

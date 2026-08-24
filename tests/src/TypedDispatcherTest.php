@@ -97,6 +97,7 @@ class TypedDispatcherTest extends TestCase
         $this->assertSame(12, $result->getValue());
         $this->assertNull($result->getProblem());
         $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
+        $this->assertSame('integer', $result->getDataType());
     }
 
     public function testDoesNotSerializeADomainObjectReturnedByTheOperation(): void
@@ -115,6 +116,7 @@ class TypedDispatcherTest extends TestCase
         // serialization is not this tier's responsibility.
         $this->assertInstanceOf(ExampleGreeting::class, $result->getValue());
         $this->assertSame('Hello, World!', $result->getValue()->getMessage());
+        $this->assertSame(ExampleGreeting::class, $result->getDataType());
     }
 
     public function testDoesNotCatchExceptionsThrownByTheOperation(): void

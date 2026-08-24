@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\BackboneDispatcher\Service\Dispatch;
 
+use Derafu\BackboneDispatcher\Contract\ExecutionMetadataInterface;
 use Derafu\BackboneDispatcher\Contract\OperationRequestInterface;
 use Derafu\BackboneDispatcher\Contract\OperationResultInterface;
 use Derafu\BackboneDispatcher\Contract\ProblemDetailInterface;
@@ -67,22 +68,23 @@ class SafeDispatcher implements SafeDispatcherInterface
             $value = $this->serializer->serialize($result->getValue());
             $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
 
-            return OperationResult::success($value, $metadata);
+            return OperationResult::success($value, $metadata, $result->getDataType());
         } catch (Throwable $e) {
             $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
 
-            return OperationResult::failure($this->buildProblem($e, $request), $metadata);
+            return OperationResult::failure($this->buildProblem($e, $request, $metadata), $metadata);
         }
     }
 
     private function buildProblem(
         Throwable $e,
-        OperationRequestInterface $request
+        OperationRequestInterface $request,
+        ExecutionMetadataInterface $metadata
     ): ProblemDetailInterface {
         return new ProblemDetail(
             detail: $e->getMessage(),
             throwable: SafeThrowable::fromThrowable($e, $this->projectDir),
-            timestamp: date(DATE_ATOM),
+            timestamp: $metadata->getTimestamp(),
             environment: $this->environment,
             instance: $request->getId(),
             debug: $this->debug,

@@ -24,7 +24,7 @@ class ProblemDetail implements ProblemDetailInterface
     public function __construct(
         private readonly string $detail,
         private readonly SafeThrowableInterface $throwable,
-        private readonly string $timestamp,
+        private readonly float $timestamp,
         private readonly string $environment,
         private readonly string $type = 'about:blank',
         private readonly ?string $title = null,
@@ -85,7 +85,7 @@ class ProblemDetail implements ProblemDetailInterface
     /**
      * {@inheritDoc}
      */
-    public function getTimestamp(): string
+    public function getTimestamp(): float
     {
         return $this->timestamp;
     }
@@ -156,6 +156,7 @@ class ProblemDetail implements ProblemDetailInterface
             'instance' => $this->getInstance(),
             'extensions' => [
                 'timestamp' => $this->getTimestamp(),
+                'data_type' => null, // Always null: a failure never has a value to describe.
                 'environment' => $this->getEnvironment(),
                 'debug' => $this->isDebug(),
                 'context' => $this->getContext(),

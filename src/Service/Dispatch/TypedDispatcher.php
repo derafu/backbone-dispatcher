@@ -61,7 +61,8 @@ class TypedDispatcher implements TypedDispatcherInterface
         );
 
         $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
+        $dataType = is_object($value) ? get_class($value) : gettype($value);
 
-        return OperationResult::success($value, $metadata);
+        return OperationResult::success($value, $metadata, $dataType);
     }
 }

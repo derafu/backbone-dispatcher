@@ -29,6 +29,7 @@ use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\BackboneDispatcher\ValueObject\ProblemDetail;
 use Derafu\BackboneDispatcher\ValueObject\SafeThrowable;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
@@ -108,6 +109,7 @@ class SafeDispatcherTest extends TestCase
         $this->assertNull($result->getProblem());
         $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
         $this->assertSame(getmypid(), $result->getMetadata()->getPid());
+        $this->assertSame('integer', $result->getDataType());
     }
 
     public function testFlattensADomainObjectReturnedByTheOperationUsingTheSerializer(): void
@@ -130,6 +132,10 @@ class SafeDispatcherTest extends TestCase
                 'reply' => null,
             ],
         ], $result->getValue());
+        // The *pre-serialization* type, even though getValue() above is
+        // already the flattened array — data_type is exactly the piece of
+        // information that is otherwise lost once Serializer runs.
+        $this->assertSame(ExampleGreeting::class, $result->getDataType());
     }
 
     public function testNeverThrowsAndReturnsAFailureOperationResultInstead(): void
@@ -155,5 +161,8 @@ class SafeDispatcherTest extends TestCase
         );
         $this->assertSame('RuntimeException', $problem->getThrowable()->getClass());
         $this->assertGreaterThanOrEqual(0.0, $result->getMetadata()->getRealTime());
+        $this->assertNull($result->getDataType());
+        // Same clock reading, not two independent `microtime(true)` calls.
+        $this->assertSame($result->getMetadata()->getTimestamp(), $problem->getTimestamp());
     }
 }

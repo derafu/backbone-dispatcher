@@ -39,7 +39,7 @@ class DiscoveryResultTest extends TestCase
         $problem = new ProblemDetail(
             detail: 'The discovery id a.b.c.d is not valid.',
             throwable: SafeThrowable::fromThrowable(new RuntimeException('boom')),
-            timestamp: date(DATE_ATOM),
+            timestamp: microtime(true),
             environment: 'test',
             instance: 'a.b.c.d',
         );

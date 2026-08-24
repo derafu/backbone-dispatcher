@@ -43,6 +43,17 @@ interface OperationResultInterface extends JsonSerializable
     public function getProblem(): ?ProblemDetailInterface;
 
     /**
+     * @return string|null The type of the value the operation returned,
+     * before `SafeDispatcherInterface` serializes it (`get_class()` for an
+     * object, `gettype()` otherwise) — e.g. `"Derafu\Certificate\Certificate"`.
+     * `null` for a failure, since there is no value. A transport-level
+     * response envelope (e.g. `meta.data_type` in both the HTTP API and the
+     * console bridge) uses this; it is not something `getValue()` can
+     * recover on its own once serialized.
+     */
+    public function getDataType(): ?string;
+
+    /**
      * @return ExecutionMetadataInterface Statistics about the execution
      * that produced this result. Always present, success or failure —
      * every producer of an `OperationResultInterface` measures its own
