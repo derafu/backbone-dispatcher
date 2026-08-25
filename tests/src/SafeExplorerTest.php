@@ -92,8 +92,9 @@ class SafeExplorerTest extends TestCase
         $result = $this->explorer->tree();
 
         $this->assertTrue($result->isSuccess());
-        $this->assertSame('example_package', $result->getValue()[0]['id']);
-        $this->assertArrayHasKey('components', $result->getValue()[0]);
+        $this->assertArrayHasKey('description', $result->getValue());
+        $this->assertSame('example_package', $result->getValue()['packages'][0]['id']);
+        $this->assertArrayHasKey('components', $result->getValue()['packages'][0]);
     }
 
     public function testDescribeReturnsAFailureResultForAMalformedId(): void

@@ -120,7 +120,14 @@ interface ExplorerInterface
      * `"package.component.worker"` or `"package.component.worker::operation"`)
      * to whichever of `getPackage()`/`getComponent()`/`getWorker()`/
      * `getOperation()` matches — or, for `null` (there is no single "root"
-     * resource to look up), `getPackages()`.
+     * resource to look up): `{'summary' => ..., 'description' => ...,
+     * 'packages' => getPackages()}`. `summary`/`description` are the
+     * package registry's own PHPDoc — the one thing the root has an
+     * honest source for even though it has no `id`/`name` (a registry is
+     * not a `ServiceInterface` with an identity, unlike a
+     * package/component/worker) — kept alongside `packages` rather than
+     * replacing it, the same way every other level keeps its own
+     * `summary`/`description` alongside its children.
      *
      * @param string|null $id
      * @return array
@@ -133,6 +140,12 @@ interface ExplorerInterface
      * back with its `components`, each of those with its own `workers`,
      * each of those with its own `operations`. An operation id resolves
      * exactly like `describe()`, since operations have no children to nest.
+     *
+     * For `null`, this nests the same way: `{'summary' => ..., 'description'
+     * => ..., 'packages' => [...]}`, just like `describe(null)`, except
+     * each package in `packages` is deeply nested (its own `components`,
+     * down to `operations`) rather than the shallow `getPackage()` shape
+     * `describe(null)`'s `packages` holds.
      *
      * @param string|null $id
      * @return array

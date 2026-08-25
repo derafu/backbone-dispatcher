@@ -19,6 +19,7 @@ use Derafu\BackboneDispatcher\Service\Discovery\Explorer;
 use Derafu\BackboneDispatcher\Service\Policy\AllowListOperationPolicy;
 use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponentWithoutDescription;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
@@ -58,6 +59,7 @@ class ExplorerTest extends TestCase
 
         $this->assertSame('example_package', $data['id']);
         $this->assertSame('Example Package', $data['name']);
+        $this->assertSame('A real package holding a fixed set of real components.', $data['summary']);
         $this->assertSame('A package holding a fixed set of real components.', $data['description']);
     }
 
@@ -69,7 +71,30 @@ class ExplorerTest extends TestCase
 
         $this->assertSame('example_package.example_component', $data['id']);
         $this->assertSame('Example Component', $data['name']);
+        $this->assertSame('A real component holding a fixed set of real workers.', $data['summary']);
         $this->assertSame('A component holding a fixed set of real workers.', $data['description']);
+    }
+
+    public function testGetComponentFallsBackToThePhpDocDescriptionWhenNull(): void
+    {
+        $worker = new ExampleWorker();
+        $component = new ExampleComponentWithoutDescription(['example_worker' => $worker]);
+        $package = new ExamplePackage(['example_component_without_description' => $component]);
+
+        $registry = new ExamplePackageRegistry();
+        $registry->registerPackage('example_package', $package);
+
+        $explorer = new Explorer($registry, $this->inspector);
+
+        $data = $explorer->getComponent('example_package', 'example_component_without_description');
+
+        $this->assertNull($component->getDescription());
+        $this->assertSame(
+            "`getDescription()` returns `null` here, as if its `#[Component]`-style\n"
+                . "attribute never set one — used to verify `Explorer` falls back to this\n"
+                . 'very PHPDoc description instead of reporting `null`.',
+            $data['description'],
+        );
     }
 
     public function testGetWorkerIncludesTheRealNameAndDescription(): void
@@ -80,6 +105,7 @@ class ExplorerTest extends TestCase
 
         $this->assertSame('example_package.example_component.example_worker', $data['id']);
         $this->assertSame('Example Worker', $data['name']);
+        $this->assertStringContainsString('A real worker (uses the actual production traits', $data['summary']);
         $this->assertSame('A worker with a few real, reflectable operations.', $data['description']);
     }
 
@@ -194,12 +220,18 @@ class ExplorerTest extends TestCase
         $this->assertNotEmpty($explorer->getPackages());
     }
 
-    public function testDescribeWithNullIdListsPackages(): void
+    public function testDescribeWithNullIdListsPackagesAlongsideTheRegistryDescription(): void
     {
         $explorer = new Explorer($this->registry, $this->inspector);
 
-        $this->assertSame($explorer->getPackages(), $explorer->describe());
-        $this->assertSame($explorer->getPackages(), $explorer->describe(null));
+        $expected = [
+            'summary' => 'A real, minimal package registry.',
+            'description' => 'A real, minimal package registry.',
+            'packages' => $explorer->getPackages(),
+        ];
+
+        $this->assertSame($expected, $explorer->describe());
+        $this->assertSame($expected, $explorer->describe(null));
     }
 
     public function testDescribeWithOneSegmentReturnsThePackage(): void
@@ -293,13 +325,24 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $this->assertSame('example_package', $tree[0]['id']);
-        $component = $tree[0]['components'][0];
+        $this->assertSame('example_package', $tree['packages'][0]['id']);
+        $component = $tree['packages'][0]['components'][0];
         $this->assertSame('example_package.example_component', $component['id']);
         $worker = $component['workers'][0];
         $this->assertSame('example_package.example_component.example_worker', $worker['id']);
         $operationNames = array_column($worker['operations'], 'name');
         $this->assertContains('sum', $operationNames);
+    }
+
+    public function testTreeWithNullIdIncludesTheRegistryDescriptionAlongsidePackages(): void
+    {
+        $explorer = new Explorer($this->registry, $this->inspector);
+
+        $tree = $explorer->tree();
+
+        $this->assertSame(['summary', 'description', 'packages'], array_keys($tree));
+        $this->assertSame('A real, minimal package registry.', $tree['summary']);
+        $this->assertSame('A real, minimal package registry.', $tree['description']);
     }
 
     public function testTreeAtEachLevelMatchesDescribePlusItsOwnChildrenKey(): void
@@ -366,7 +409,7 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $worker = $tree[0]['components'][0]['workers'][0];
+        $worker = $tree['packages'][0]['components'][0]['workers'][0];
         $this->assertSame(['sum'], array_column($worker['operations'], 'name'));
     }
 
@@ -378,7 +421,7 @@ class ExplorerTest extends TestCase
             new AllowListOperationPolicy(['other_package.*']),
         );
 
-        $this->assertSame([], $explorer->tree());
+        $this->assertSame([], $explorer->tree()['packages']);
     }
 
     /**
@@ -446,9 +489,9 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $this->assertSame(['mixed_package'], array_column($tree, 'id'));
+        $this->assertSame(['mixed_package'], array_column($tree['packages'], 'id'));
 
-        $components = $tree[0]['components'];
+        $components = $tree['packages'][0]['components'];
         $this->assertSame(['mixed_package.mixed_component'], array_column($components, 'id'));
 
         $workers = $components[0]['workers'];

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Service\Discovery;
 
 use Derafu\Backbone\Contract\PackageRegistryInterface;
+use Derafu\Backbone\Contract\ServiceInterface;
 use Derafu\BackboneDispatcher\Contract\ExplorerInterface;
 use Derafu\BackboneDispatcher\Contract\InspectorInterface;
 use Derafu\BackboneDispatcher\Contract\OperationPolicyInterface;
@@ -44,6 +45,16 @@ use Derafu\BackboneDispatcher\Exception\OperationNotFoundException;
  * for an operation (`"package.component.worker::operation"`) — the same
  * shape `OperationRequest`'s invocation id uses, so a discovery id with an
  * operation and an invocation id are interchangeable strings.
+ *
+ * Every level (including the root of `describe()`/`tree()`) reports both
+ * `summary` and `description`, read from the class' own PHPDoc via
+ * `Inspector::getClassDoc()`. `description` prefers `getDescription()`
+ * when the instance has one (a package/component/worker's own
+ * `#[Worker]`/`#[Component]`/`#[Package]`-style attribute) — the same
+ * "explicit value, else PHPDoc" resolution `Inspector::getPublicMethods()`
+ * already applies to an operation's `#[Operation]` attribute, just one
+ * level up. `summary` has no such attribute to prefer (there is no
+ * `#[Worker(summary: ...)]`), so it is always the PHPDoc's, verbatim.
  */
 class Explorer implements ExplorerInterface
 {
@@ -167,11 +178,13 @@ class Explorer implements ExplorerInterface
         bool $withComponents = false
     ): array {
         $packageInstance = $this->packageRegistry->getPackage($package);
+        $doc = $this->resolveDoc($packageInstance);
 
         $data = [
             'id' => $package,
             'name' => $packageInstance->getName(),
-            'description' => $packageInstance->getDescription(),
+            'summary' => $doc['summary'],
+            'description' => $doc['description'],
         ];
 
         if ($withComponents) {
@@ -199,6 +212,7 @@ class Explorer implements ExplorerInterface
             ->getPackage($package)
             ->getComponent($component)
         ;
+        $doc = $this->resolveDoc($componentInstance);
 
         $data = [
             'id' => sprintf(
@@ -207,7 +221,8 @@ class Explorer implements ExplorerInterface
                 $component
             ),
             'name' => $componentInstance->getName(),
-            'description' => $componentInstance->getDescription(),
+            'summary' => $doc['summary'],
+            'description' => $doc['description'],
         ];
 
         if ($withWorkers) {
@@ -238,6 +253,7 @@ class Explorer implements ExplorerInterface
             ->getComponent($component)
             ->getWorker($worker)
         ;
+        $doc = $this->resolveDoc($workerInstance);
 
         $data = [
             'id' => sprintf(
@@ -247,7 +263,8 @@ class Explorer implements ExplorerInterface
                 $worker
             ),
             'name' => $workerInstance->getName(),
-            'description' => $workerInstance->getDescription(),
+            'summary' => $doc['summary'],
+            'description' => $doc['description'],
         ];
 
         if ($withOperations) {
@@ -305,7 +322,13 @@ class Explorer implements ExplorerInterface
     public function describe(?string $id = null): array
     {
         if ($id === null || $id === '') {
-            return $this->getPackages();
+            $doc = $this->resolveClassDoc($this->packageRegistry);
+
+            return [
+                'summary' => $doc['summary'],
+                'description' => $doc['description'],
+                'packages' => $this->getPackages(),
+            ];
         }
 
         [$segments, $operation] = $this->parseDiscoveryId($id);
@@ -388,6 +411,17 @@ class Explorer implements ExplorerInterface
      * computed once per branch and reused for both the emptiness check and
      * the nested value, instead of walking each branch twice.
      *
+     * Wrapped in `['summary' => ..., 'description' => ..., 'packages' =>
+     * [...]]` rather than returned as a bare list: every other level
+     * (`buildPackageTree()`, `buildComponentTree()`, `buildWorkerTree()`)
+     * is `{id, name, summary, description, <children>}`, and a bare list
+     * at the root broke that pattern for no real reason — there is no
+     * `PackageRegistryInterface` counterpart to `id`/`name` (it is a
+     * registry, not a `ServiceInterface` with an identity), but
+     * `summary`/`description` have an honest source, the registry class'
+     * own PHPDoc, so there is no reason for them to be missing here just
+     * because the rest of the shape does not apply.
+     *
      * @return array
      */
     private function buildPackagesTree(): array
@@ -405,7 +439,13 @@ class Explorer implements ExplorerInterface
             $trees[] = $tree;
         }
 
-        return $trees;
+        $doc = $this->resolveClassDoc($this->packageRegistry);
+
+        return [
+            'summary' => $doc['summary'],
+            'description' => $doc['description'],
+            'packages' => $trees,
+        ];
     }
 
     /**
@@ -517,5 +557,54 @@ class Explorer implements ExplorerInterface
                 $operation
             ),
         ], $info);
+    }
+
+    /**
+     * Resolves `summary`/`description` from a class' own PHPDoc alone —
+     * the shared base both `resolveDoc()` (for a `ServiceInterface`, which
+     * may override `description` via its own attribute) and the package
+     * registry (which has no such attribute to prefer, so this is its
+     * only source) build on. `description` falls back to `summary` when
+     * there is no separate description (a docblock with no blank line
+     * after its first sentence has nothing else to give) — a class
+     * documented in one short sentence should not report `null` just
+     * because that sentence never grew a second paragraph.
+     *
+     * @param object $instance
+     * @return array{summary: string|null, description: string|null}
+     */
+    private function resolveClassDoc(object $instance): array
+    {
+        $classDoc = $this->inspector->getClassDoc($instance);
+
+        return [
+            'summary' => $classDoc['summary'],
+            'description' => $classDoc['description'] ?? $classDoc['summary'],
+        ];
+    }
+
+    /**
+     * Resolves `summary`/`description` to report for a package/component/
+     * worker: `resolveClassDoc()`'s PHPDoc-only reading, except
+     * `description` prefers the instance's own `getDescription()` when
+     * given — the same "explicit value, else PHPDoc" precedence
+     * `Inspector::getPublicMethods()` already applies to an operation's
+     * `#[Operation]` attribute over its method's PHPDoc, applied here to a
+     * `#[Worker]`/`#[Component]`/`#[Package]`-style attribute's own
+     * `description` instead. `summary` has no equivalent attribute to
+     * prefer, so it is always `resolveClassDoc()`'s, verbatim — same as
+     * `getName()`, which also gets no fallback: unlike `description`,
+     * neither is ever empty by omission (`getName()` is what builds the
+     * discovery id).
+     *
+     * @param ServiceInterface $instance
+     * @return array{summary: string|null, description: string|null}
+     */
+    private function resolveDoc(ServiceInterface $instance): array
+    {
+        $doc = $this->resolveClassDoc($instance);
+        $doc['description'] = $instance->getDescription() ?? $doc['description'];
+
+        return $doc;
     }
 }
