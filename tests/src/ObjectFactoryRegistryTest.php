@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher;
 
+use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
 use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException;
 use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
@@ -149,6 +150,12 @@ class ObjectFactoryRegistryTest extends TestCase
         $this->assertInstanceOf(ExampleBag::class, $bag);
     }
 
+    /**
+     * The `continue` that moves on to the next candidate must not silently
+     * discard *why* the rejected one failed: when every candidate is
+     * eventually rejected too, the final `NoDeserializerFoundException`
+     * must still say why each one was — not just "nothing worked".
+     */
     public function testThrowsWhenEveryExplicitCandidateRejectsTheDataShapeAndThereIsNoFallback(): void
     {
         $registry = new ObjectFactoryRegistry(
@@ -157,11 +164,63 @@ class ObjectFactoryRegistryTest extends TestCase
             ],
         );
 
-        $this->expectException(NoDeserializerFoundException::class);
+        try {
+            // ExampleBag::class is array-only; a string does not match,
+            // and there is no fallback to fall through to.
+            $registry->create('hello', ExampleBag::class);
+            $this->fail('Expected NoDeserializerFoundException to be thrown.');
+        } catch (NoDeserializerFoundException $e) {
+            $this->assertStringContainsString(
+                sprintf('%s (%s requires array data.)', ExampleBag::class, ExampleBagDeserializer::class),
+                $e->getMessage(),
+            );
+            $this->assertInstanceOf(UnsupportedDataTypeException::class, $e->getPrevious());
+        }
+    }
 
-        // ExampleBag::class is array-only; a string does not match, and
-        // there is no fallback to fall through to.
-        $registry->create('hello', ExampleBag::class);
+    /**
+     * The scenario `assertKeys()` exists for: two candidates of a union
+     * type that are *both* array-shaped, so `assertArray()` alone cannot
+     * tell them apart — only their own required keys can. Given an array
+     * that satisfies neither, both must be tried, both must reject it via
+     * `assertKeys()`, and — the point of this test — *both* rejection
+     * reasons must show up in the final message, not just the last one
+     * tried.
+     */
+    public function testIncludesEveryCandidatesRejectionReasonWhenBothAreArrayShapedButNeitherHasItsRequiredKeys(): void
+    {
+        $needsName = new class () extends AbstractDeserializer {
+            public function deserialize(array|string $data, string $class): object
+            {
+                $data = $this->assertKeys($this->assertArray($data), ['name']);
+
+                return ExampleBag::fromArray(['name' => $data['name'], 'amount' => 0]);
+            }
+        };
+
+        $needsCode = new class () extends AbstractDeserializer {
+            public function deserialize(array|string $data, string $class): object
+            {
+                $data = $this->assertKeys($this->assertArray($data), ['code']);
+
+                return new ExampleGreeting($data['code']);
+            }
+        };
+
+        $registry = new ObjectFactoryRegistry(
+            deserializers: [
+                ExampleBag::class => $needsName,
+                ExampleGreeting::class => $needsCode,
+            ],
+        );
+
+        try {
+            $registry->create(['other' => 'value'], ExampleBag::class . '|' . ExampleGreeting::class);
+            $this->fail('Expected NoDeserializerFoundException to be thrown.');
+        } catch (NoDeserializerFoundException $e) {
+            $this->assertStringContainsString('is missing required key(s): name', $e->getMessage());
+            $this->assertStringContainsString('is missing required key(s): code', $e->getMessage());
+        }
     }
 
     /**
