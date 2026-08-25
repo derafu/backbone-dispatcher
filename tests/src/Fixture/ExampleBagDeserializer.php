@@ -12,8 +12,7 @@ declare(strict_types=1);
 
 namespace Derafu\TestsBackboneDispatcher\Fixture;
 
-use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
-use InvalidArgumentException;
+use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
 
 /**
  * A deliberately distinguishable deserializer for `ExampleBag`: it marks
@@ -21,21 +20,15 @@ use InvalidArgumentException;
  * used instead of `ExampleBag`'s own `fromArray()` (the fallback), even
  * though both could build the same class.
  *
- * `DeserializerInterface` allows `$data` to be a `string` too (e.g. a
- * base64-encoded file for a certificate/CAF deserializer), since that
- * decision belongs to each deserializer, not the interface. This one only
- * makes sense for array data, so it rejects a string explicitly instead of
- * indexing into it.
+ * Array-only (via `assertArray()`), paired with `ExampleGreetingDeserializer`
+ * (string-only) in tests that need two candidates of a union type with
+ * mutually exclusive data shapes.
  */
-class ExampleBagDeserializer implements DeserializerInterface
+class ExampleBagDeserializer extends AbstractDeserializer
 {
     public function deserialize(array|string $data, string $class): object
     {
-        if (!is_array($data)) {
-            throw new InvalidArgumentException(
-                'ExampleBagDeserializer requires array data.'
-            );
-        }
+        $data = $this->assertArray($data);
 
         return ExampleBag::fromArray([
             'name' => $data['name'] . ' (via registry)',

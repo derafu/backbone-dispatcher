@@ -34,8 +34,12 @@
     "require-dev": {
         "ext-xdebug": "*",
         "friendsofphp/php-cs-fixer": "^3.95",
+        "opis/json-schema": "^2.6",
         "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^13.3"
+    },
+    "suggest": {
+        "opis/json-schema": "Required to use AbstractDeserializer::assertSchema()."
     },
     "scripts": {
         "docs": "php tools/phpdocumentor run --config=phpdoc.xml",

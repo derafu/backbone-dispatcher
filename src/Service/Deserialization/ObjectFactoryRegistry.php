@@ -16,6 +16,7 @@ use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
 use Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException;
 use Derafu\BackboneDispatcher\Exception\ObjectFactoryException;
+use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
 
 /**
  * Resolves which `DeserializerInterface` builds a given class, and
@@ -26,9 +27,17 @@ use Derafu\BackboneDispatcher\Exception\ObjectFactoryException;
  * union type string (`"A|B"`, as produced by `Inspector` for union-typed
  * parameters) — each candidate is tried in order.
  *
- * For each candidate, the explicit map is tried first; if none matches,
- * `$fallback` (if given) is tried instead, for each candidate in turn,
- * moving on to the next one if it throws.
+ * For each candidate, the explicit map is tried first: if its deserializer
+ * rejects the data's shape (`UnsupportedDataTypeException`, thrown by
+ * `AbstractDeserializer::assertArray()`/`assertString()`), the next
+ * candidate is tried instead — e.g. for `DocumentBagInterface|
+ * XmlDocumentInterface|string`, array data builds a `DocumentBagInterface`
+ * but string data skips it and builds an `XmlDocumentInterface` instead. A
+ * candidate's deserializer throwing anything else (a genuine business
+ * exception from deeper inside it) is not a shape mismatch and propagates
+ * immediately, without trying further candidates. If no explicit candidate
+ * matches at all, `$fallback` (if given) is tried next, for each candidate
+ * in turn, moving on to the next one if it throws.
  */
 class ObjectFactoryRegistry implements ObjectFactoryInterface
 {
@@ -58,7 +67,11 @@ class ObjectFactoryRegistry implements ObjectFactoryInterface
 
         foreach ($candidates as $candidate) {
             if (isset($this->deserializers[$candidate])) {
-                return $this->deserializers[$candidate]->deserialize($data, $candidate);
+                try {
+                    return $this->deserializers[$candidate]->deserialize($data, $candidate);
+                } catch (UnsupportedDataTypeException) {
+                    continue;
+                }
             }
         }
 
