@@ -16,11 +16,15 @@ use Derafu\Backbone\Attribute\Operation;
 use Derafu\BackboneDispatcher\Contract\InspectorInterface;
 use phpDocumentor\Reflection\DocBlock;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
+use phpDocumentor\Reflection\DocBlock\Tags\Return_;
+use phpDocumentor\Reflection\DocBlock\Tags\Throws;
 use phpDocumentor\Reflection\DocBlockFactory;
 use phpDocumentor\Reflection\DocBlockFactoryInterface;
+use phpDocumentor\Reflection\Types\ContextFactory;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
+use ReflectionType;
 use ReflectionUnionType;
 use Symfony\Component\VarExporter\LazyObjectInterface;
 
@@ -151,6 +155,7 @@ class Inspector implements InspectorInterface
 
         $methods = [];
         $docBlockFactory = DocBlockFactory::createInstance();
+        $contextFactory = new ContextFactory();
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
             if ($method->getDeclaringClass()->getName() !== $reflection->getName()) {
@@ -173,7 +178,7 @@ class Inspector implements InspectorInterface
 
             $docComment = $method->getDocComment();
             $docBlock = $docComment
-                ? $docBlockFactory->create($docComment)
+                ? $docBlockFactory->create($docComment, $contextFactory->createFromReflector($method))
                 : null
             ;
 
@@ -203,6 +208,8 @@ class Inspector implements InspectorInterface
                 'summary' => $this->resolveSummary($operationAttribute, $docBlock),
                 'description' => $this->resolveDescription($operationAttribute, $docBlock),
                 'parameters' => $parameters,
+                'returns' => $this->resolveReturns($method, $docBlock),
+                'throws' => $this->resolveThrows($docBlock),
                 'tags' => $tags,
                 'links' => $this->getDocBlockLinks($docBlock),
                 'deprecated' => !empty($tags['deprecated']),
@@ -289,6 +296,94 @@ class Inspector implements InspectorInterface
     }
 
     /**
+     * Resolves what to report about a method's return value: its reflected
+     * type (same union-type handling as a parameter's) and the `@return`
+     * tag's description from PHPDoc, if any.
+     *
+     * Unlike `resolveSummary()`/`resolveDescription()`, there is no
+     * `#[Operation]` override for this yet — only reflection/PHPDoc feed
+     * it, the same "cheap, always-available" source `getParameters()`
+     * already relies on for a parameter's `type`.
+     *
+     * @param ReflectionMethod $method
+     * @param DocBlock|null $docBlock
+     * @return array{type: string, description: string|null}
+     */
+    private function resolveReturns(ReflectionMethod $method, ?DocBlock $docBlock): array
+    {
+        $returnTags = $docBlock ? $docBlock->getTagsByName('return') : [];
+        $returnTag = $returnTags[0] ?? null;
+
+        $description = null;
+        if ($returnTag instanceof Return_) {
+            $description = $returnTag->getDescription()->render() ?: null;
+        }
+
+        return [
+            'type' => $this->resolveTypeName($method->getReturnType()),
+            'description' => $description,
+        ];
+    }
+
+    /**
+     * Resolves what to report about a method's declared exceptions: one
+     * entry per `@throws` tag, with the exception's type and description.
+     *
+     * Unlike a return type, there is no reflected signature to fall back
+     * on — PHP does not declare thrown exceptions as part of a method's
+     * type — so this is entirely sourced from PHPDoc, and a method can
+     * have any number of `@throws` tags (unlike the single `@return`).
+     *
+     * @param DocBlock|null $docBlock
+     * @return array<array{type: string, description: string|null}>
+     */
+    private function resolveThrows(?DocBlock $docBlock): array
+    {
+        if (!$docBlock) {
+            return [];
+        }
+
+        $throws = [];
+        foreach ($docBlock->getTagsByName('throws') as $tag) {
+            if (!$tag instanceof Throws) {
+                continue;
+            }
+
+            $throws[] = [
+                'type' => ltrim((string) $tag->getType(), '\\'),
+                'description' => $tag->getDescription()->render() ?: null,
+            ];
+        }
+
+        return $throws;
+    }
+
+    /**
+     * Resolves a reflected type (a parameter's or a return type's) to its
+     * string representation, handling union types the same way for both.
+     *
+     * @param ReflectionType|null $type
+     * @return string
+     */
+    private function resolveTypeName(?ReflectionType $type): string
+    {
+        if ($type instanceof ReflectionUnionType) {
+            $types = [];
+            foreach ($type->getTypes() as $unionType) {
+                $types[] = $unionType->getName();
+            }
+
+            return implode('|', $types);
+        }
+
+        if ($type instanceof ReflectionNamedType) {
+            return $type->getName();
+        }
+
+        return 'mixed';
+    }
+
+    /**
      * Gets the information of the parameters of a method.
      *
      * @param ReflectionMethod $method
@@ -303,20 +398,7 @@ class Inspector implements InspectorInterface
         $docParams = $docBlock ? $docBlock->getTagsByName('param') : [];
 
         foreach ($method->getParameters() as $parameter) {
-            $type = $parameter->getType();
-
-            // Resolve the type (handles Union Types).
-            if ($type instanceof ReflectionUnionType) {
-                $types = [];
-                foreach ($type->getTypes() as $unionType) {
-                    $types[] = $unionType->getName();
-                }
-                $typeName = implode('|', $types);
-            } elseif ($type instanceof ReflectionNamedType) {
-                $typeName = $type->getName();
-            } else {
-                $typeName = 'mixed';
-            }
+            $typeName = $this->resolveTypeName($parameter->getType());
 
             $docParam = null;
             foreach ($docParams as $tag) {
@@ -386,6 +468,13 @@ class Inspector implements InspectorInterface
     /**
      * Resolves the inherited documentation of a parent method or interface.
      *
+     * The `Context` (namespace + `use` statements) passed to the factory is
+     * built from whichever reflector's doc comment actually gets parsed —
+     * the parent method's or the interface method's, never the original,
+     * inheriting method's — since that is the file whose `use` statements
+     * a relative type name like `@throws BookException` must resolve
+     * against to become a FQCN.
+     *
      * @param ReflectionMethod $method
      * @param DocBlockFactoryInterface $docBlockFactory
      * @return DocBlock|null
@@ -394,13 +483,18 @@ class Inspector implements InspectorInterface
         ReflectionMethod $method,
         DocBlockFactoryInterface $docBlockFactory
     ): ?DocBlock {
+        $contextFactory = new ContextFactory();
+
         // Search documentation in the parent class.
         $parentClass = $method->getDeclaringClass()->getParentClass();
         if ($parentClass && $parentClass->hasMethod($method->getName())) {
             $parentMethod = $parentClass->getMethod($method->getName());
             $parentDocComment = $parentMethod->getDocComment();
             if ($parentDocComment) {
-                return $docBlockFactory->create($parentDocComment);
+                return $docBlockFactory->create(
+                    $parentDocComment,
+                    $contextFactory->createFromReflector($parentMethod)
+                );
             }
         }
 
@@ -410,7 +504,10 @@ class Inspector implements InspectorInterface
                 $interfaceMethod = $interface->getMethod($method->getName());
                 $interfaceDocComment = $interfaceMethod->getDocComment();
                 if ($interfaceDocComment) {
-                    return $docBlockFactory->create($interfaceDocComment);
+                    return $docBlockFactory->create(
+                        $interfaceDocComment,
+                        $contextFactory->createFromReflector($interfaceMethod)
+                    );
                 }
             }
         }
