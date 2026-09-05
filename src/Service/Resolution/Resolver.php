@@ -77,7 +77,7 @@ class Resolver
                 }
             }
 
-            $type = $this->caster->resolveType($paramInfo['type']);
+            $type = $this->caster->resolveCastStrategy($paramInfo['type']);
             $args[$name] = $this->caster->cast($value, $type, $paramInfo['type']);
         }
 

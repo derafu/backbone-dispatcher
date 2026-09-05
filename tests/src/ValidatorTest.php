@@ -46,4 +46,21 @@ class ValidatorTest extends TestCase
         $this->assertTrue($this->validator->validate(null, 'SomeInterface\That\Does\Not\Exist'));
         $this->assertTrue($this->validator->validate(new \stdClass(), 'object'));
     }
+
+    #[TestWith([1, 'int|string', true])]
+    #[TestWith(['RM', 'int|string', true])]
+    #[TestWith([['a'], 'int|string', false])]
+    #[TestWith([true, 'int|string', false])]
+    public function testValidatesScalarUnions(mixed $value, string $type, bool $expected): void
+    {
+        $this->assertSame($expected, $this->validator->validate($value, $type));
+    }
+
+    public function testUnionWithUnknownCandidateIsAlwaysConsideredValid(): void
+    {
+        $this->assertTrue($this->validator->validate(
+            'anything',
+            'SomeInterface\That\Does\Not\Exist|string'
+        ));
+    }
 }

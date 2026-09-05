@@ -20,12 +20,27 @@ class Validator
     /**
      * Validates the value with the expected data type.
      *
+     * A union type (`int|string`) is valid as soon as the value matches any
+     * one of its candidates — recursing into this same method for each one,
+     * so a candidate that is itself an unknown type (a class/interface name)
+     * keeps being permissive exactly like a bare unknown type would.
+     *
      * @param mixed $value
      * @param string $type
      * @return boolean
      */
     public function validate(mixed $value, string $type): bool
     {
+        if (str_contains($type, '|')) {
+            foreach (explode('|', $type) as $candidate) {
+                if ($this->validate($value, $candidate)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         return match ($type) {
             'int' => is_int($value),
             'string' => is_string($value),

@@ -84,4 +84,54 @@ class CasterTest extends TestCase
     {
         $this->assertSame($expected, $this->caster->resolveType($type));
     }
+
+    #[TestWith(['int|string', ['integer', 'string']])]
+    #[TestWith(['int|string|null', ['integer', 'string', 'null']])]
+    public function testResolvesScalarUnionToArrayOfGenericTypeNames(
+        string $type,
+        array $expected
+    ): void {
+        $this->assertSame($expected, $this->caster->resolveType($type));
+    }
+
+    public function testResolvesMixedUnionKeepingEveryDistinctBucket(): void
+    {
+        $this->assertSame(
+            ['object', 'string'],
+            $this->caster->resolveType(ExampleBag::class . '|string')
+        );
+    }
+
+    #[TestWith(['string', 'string'])]
+    #[TestWith(['float', 'number'])]
+    #[TestWith(['int', 'integer'])]
+    #[TestWith(['bool', 'boolean'])]
+    #[TestWith(['array', 'array'])]
+    #[TestWith([ExampleBag::class, 'object'])]
+    public function testResolveCastStrategyMatchesResolveTypeForSingleTypes(
+        string $type,
+        string $expected
+    ): void {
+        $this->assertSame($expected, $this->caster->resolveCastStrategy($type));
+    }
+
+    public function testResolveCastStrategyKeepsObjectRoutingForMixedUnion(): void
+    {
+        $this->assertSame(
+            'object',
+            $this->caster->resolveCastStrategy(ExampleBag::class . '|string')
+        );
+    }
+
+    public function testResolveCastStrategyIsNativeForScalarOnlyUnion(): void
+    {
+        $this->assertSame('native', $this->caster->resolveCastStrategy('int|string'));
+    }
+
+    #[TestWith([1])]
+    #[TestWith(['RM'])]
+    public function testCastPassesThroughNativeValuesForScalarUnion(mixed $value): void
+    {
+        $this->assertSame($value, $this->caster->cast($value, 'native', 'int|string'));
+    }
 }
