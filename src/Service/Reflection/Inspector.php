@@ -15,6 +15,7 @@ namespace Derafu\BackboneDispatcher\Service\Reflection;
 use Derafu\Backbone\Attribute\Operation;
 use Derafu\BackboneDispatcher\Contract\InspectorInterface;
 use phpDocumentor\Reflection\DocBlock;
+use phpDocumentor\Reflection\DocBlock\Description;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
 use phpDocumentor\Reflection\DocBlock\Tags\Return_;
 use phpDocumentor\Reflection\DocBlock\Tags\Throws;
@@ -55,15 +56,11 @@ class Inspector implements InspectorInterface
         ;
 
         // Resolve inheritance of documentation.
-        if (
-            $docBlock
-            && (
-                $docBlock->getSummary() === '{@inheritDoc}'
-                || $docBlock->getDescription()->render() === '{@inheritDoc}'
-            )
-        ) {
-            $docBlock = $this->resolveInheritedClassDoc($reflection, DocBlockFactory::createInstance());
-        }
+        $docBlock = $this->resolveInheritDoc(
+            $docComment,
+            $docBlock,
+            fn () => $this->resolveInheritedClassDoc($reflection, DocBlockFactory::createInstance())
+        );
 
         return [
             'name' => $reflection->getName(),
@@ -173,15 +170,11 @@ class Inspector implements InspectorInterface
             ;
 
             // Resolve inheritance of documentation.
-            if (
-                $docBlock
-                && (
-                    $docBlock->getSummary() === '{@inheritDoc}'
-                    || $docBlock->getDescription()->render() === '{@inheritDoc}'
-                )
-            ) {
-                $docBlock = $this->resolveInheritedMethodDoc($method, $docBlockFactory);
-            }
+            $docBlock = $this->resolveInheritDoc(
+                $docComment,
+                $docBlock,
+                fn () => $this->resolveInheritedMethodDoc($method, $docBlockFactory)
+            );
 
             $tags = $this->getDocBlockTags($docBlock);
 
@@ -252,6 +245,151 @@ class Inspector implements InspectorInterface
         }
 
         return $reflection->getMethod($method)->isPublic();
+    }
+
+    /**
+     * Resolves every `{@inheritDoc}`/`@inheritDoc` in `$docBlock` (any
+     * casing) against `$resolveParent` — called at most once, and only
+     * when actually needed.
+     *
+     * Two independent cases, because phpDocumentor itself treats them
+     * completely differently:
+     *
+     * - The raw comment says nothing at all except the marker (with or
+     *   without the inline tag's `{}` — `@inheritDoc` with no braces is a
+     *   bare block tag, what PHPStorm and other IDEs generate for an
+     *   overridden method; phpDocumentor parses it as a separate tag, not
+     *   as part of the summary/description, leaving both empty). Nothing
+     *   here is checked against the parsed `$docBlock` for this case: an
+     *   empty summary/description has no text left to match against, so
+     *   the raw comment is the only place this can still be detected. The
+     *   parent's entire docblock (summary, description, and its own tags)
+     *   is adopted outright.
+     * - `{@inheritDoc}` (with braces; the bare, no-braces form never
+     *   survives as literal text once mixed with other content — see this
+     *   class' own docblock) appears inline, spliced among other, real
+     *   prose the docblock also has of its own — its own paragraph, or
+     *   mid-sentence, in the summary, the description, or both
+     *   independently. Only that occurrence is replaced with the parent's
+     *   corresponding text (the parent's summary when found in the
+     *   summary, the parent's description when found in the description);
+     *   the surrounding own text and the docblock's own tags are kept
+     *   untouched.
+     *
+     * @param string|false $docComment
+     * @param DocBlock|null $docBlock
+     * @param callable $resolveParent Lazily resolves the parent's
+     *   `DocBlock`; never called when no inheritDoc marker is present.
+     * @return DocBlock|null
+     */
+    private function resolveInheritDoc(
+        string|false $docComment,
+        ?DocBlock $docBlock,
+        callable $resolveParent
+    ): ?DocBlock {
+        if ($this->isWholeDocInheritDocPlaceholder($docComment)) {
+            return $resolveParent();
+        }
+
+        if ($docBlock === null) {
+            return null;
+        }
+
+        $summary = $docBlock->getSummary();
+        $description = $docBlock->getDescription()->render();
+
+        $summaryHasPlaceholder = $this->containsInheritDocTag($summary);
+        $descriptionHasPlaceholder = $this->containsInheritDocTag($description);
+
+        if (!$summaryHasPlaceholder && !$descriptionHasPlaceholder) {
+            return $docBlock;
+        }
+
+        $parentDocBlock = $resolveParent();
+
+        if ($summaryHasPlaceholder) {
+            $summary = $this->replaceInheritDocTag(
+                $summary,
+                $parentDocBlock?->getSummary() ?? ''
+            );
+        }
+
+        if ($descriptionHasPlaceholder) {
+            $description = $this->replaceInheritDocTag(
+                $description,
+                $parentDocBlock?->getDescription()->render() ?? ''
+            );
+        }
+
+        return new DocBlock($summary, new Description($description), $docBlock->getTags());
+    }
+
+    /**
+     * Checks whether a raw doc comment says nothing but "inherit the
+     * parent's" — in any of its valid, real-world spellings: `@inheritDoc`/
+     * `@inheritdoc` (any casing), with or without the inline tag's `{}`.
+     *
+     * Deliberately works on the raw comment (before `DocBlockFactory`
+     * parses it), not on a parsed `DocBlock`'s summary/description: with
+     * braces (`{@inheritDoc}`), phpDocumentor keeps the tag as plain text
+     * in the summary; without them, it parses it into a separate tag
+     * instead, leaving summary/description empty — matching the raw text
+     * once, before that parsing fork happens, covers both regardless of
+     * which path phpDocumentor takes.
+     *
+     * Deliberately never true when the comment has anything else in it:
+     * the pattern anchors to the entire comment, so a docblock that also
+     * has real, own content of its own falls through to the inline splice
+     * handling in `resolveInheritDoc()` instead.
+     *
+     * @param string|false $docComment
+     * @return bool
+     */
+    private function isWholeDocInheritDocPlaceholder(string|false $docComment): bool
+    {
+        if ($docComment === false) {
+            return false;
+        }
+
+        return (bool) preg_match(
+            '#^/\*\*[\s*]*\{?@inheritdoc\}?[\s*]*\*/$#i',
+            trim($docComment)
+        );
+    }
+
+    /**
+     * Checks whether `$text` contains the `{@inheritDoc}` inline tag (any
+     * casing), anywhere — the whole text, its own paragraph, or spliced
+     * mid-sentence alongside other real prose.
+     *
+     * @param string $text
+     * @return bool
+     */
+    private function containsInheritDocTag(string $text): bool
+    {
+        return (bool) preg_match('/\{@inheritdoc\}/i', $text);
+    }
+
+    /**
+     * Replaces every `{@inheritDoc}` occurrence (any casing) in `$text`
+     * with `$replacement`, verbatim.
+     *
+     * Uses a callback replacement (not a plain string one) specifically so
+     * `$replacement` is never interpreted as a backreference pattern (e.g.
+     * a parent docblock that itself mentions a `$variable`, which a plain
+     * `preg_replace()` string replacement would otherwise try to expand).
+     *
+     * @param string $text
+     * @param string $replacement
+     * @return string
+     */
+    private function replaceInheritDocTag(string $text, string $replacement): string
+    {
+        return preg_replace_callback(
+            '/\{@inheritdoc\}/i',
+            static fn (): string => $replacement,
+            $text
+        );
     }
 
     /**
