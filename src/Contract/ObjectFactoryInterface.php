@@ -14,17 +14,18 @@ namespace Derafu\BackboneDispatcher\Contract;
 
 /**
  * The entry point `Caster` uses to turn array/string data into an object of
- * a given type. Unlike `DeserializerInterface`, this handles the two cases
- * a deserializer never has to: `$data` being `null`, and `$class` being a
- * union type string (`"A|B"`) as produced by `Inspector` for union-typed
- * parameters.
+ * a given type. Unlike `DeserializerInterface`, this handles the cases a
+ * deserializer never has to: `$data` being `null`, `$class` being a union
+ * type string (`"A|B"`) as produced by `Inspector` for union-typed
+ * parameters, and `"array"` as one of that union's candidates — which
+ * matches `$data` unchanged, without needing a deserializer for it.
  */
 interface ObjectFactoryInterface
 {
     /**
      * @param array<string, mixed>|string|null $data
      * @param string $class
-     * @return object|null
+     * @return array<string, mixed>|object|null
      */
-    public function create(array|string|null $data, string $class): ?object;
+    public function create(array|string|null $data, string $class): array|object|null;
 }

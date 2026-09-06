@@ -59,6 +59,8 @@ class ObjectFactoryRegistryTest extends TestCase
 
         $bag = $registry->create(['name' => 'folios', 'amount' => 3], ExampleBag::class);
 
+        $this->assertInstanceOf(ExampleBag::class, $bag);
+
         // The registered deserializer marks the name; plain fromArray() would not.
         $this->assertSame('folios (via registry)', $bag->getName());
     }
@@ -70,6 +72,45 @@ class ObjectFactoryRegistryTest extends TestCase
         $bag = $registry->create(
             ['name' => 'folios', 'amount' => 3],
             'Not\A\Real\Class|' . ExampleBag::class
+        );
+
+        $this->assertInstanceOf(ExampleBag::class, $bag);
+    }
+
+    /**
+     * `array` as a union candidate needs no deserializer at all: the data
+     * already is a plain PHP array, which is exactly what that candidate
+     * asks for. Real-world case: `Liquidacion|array|stdClass` — `Liquidacion`
+     * has no `fromArray()` and no registered deserializer, so without this,
+     * every candidate fails even though the caller only ever meant to pass
+     * a plain array through untouched.
+     */
+    public function testArrayCandidateAcceptsArrayDataWithNoDeserializerNeeded(): void
+    {
+        $registry = new ObjectFactoryRegistry(fallback: new FromArrayDeserializer());
+
+        $data = ['name' => 'folios', 'amount' => 3];
+
+        $result = $registry->create($data, 'Not\A\Real\Liquidacion|array|' . ExampleBag::class);
+
+        $this->assertSame($data, $result);
+    }
+
+    /**
+     * Declaration order still governs: an earlier candidate with a
+     * registered deserializer that actually matches the data's shape wins
+     * over a later `array` candidate — `array` is only a bare passthrough,
+     * not a shortcut that skips checking the candidates before it.
+     */
+    public function testAnEarlierCandidateWithAMatchingDeserializerStillWinsOverArray(): void
+    {
+        $registry = new ObjectFactoryRegistry(
+            deserializers: [ExampleBag::class => new ExampleBagDeserializer()],
+        );
+
+        $bag = $registry->create(
+            ['name' => 'folios', 'amount' => 3],
+            ExampleBag::class . '|array',
         );
 
         $this->assertInstanceOf(ExampleBag::class, $bag);
