@@ -14,8 +14,10 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorkerSubclass;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
 
 /**
  * Covers `isOperation()`, `hasOperationAttribute()` and
@@ -62,6 +64,66 @@ class InspectorTest extends TestCase
     public function testHasOperationAttributeIsFalseForANonexistentMethod(): void
     {
         $this->assertFalse($this->inspector->hasOperationAttribute($this->worker, 'doesNotExist'));
+    }
+
+    /**
+     * `sum()` is declared on `ExampleWorker`, not on `ExampleWorkerSubclass`
+     * — it must still count as an operation of the subclass: whether a
+     * method is "an operation" is a fact about the method (public, tagged),
+     * never about which class in the hierarchy happens to declare it.
+     */
+    public function testIsOperationIsTrueForAnInheritedMethodDeclaredOnAParentClass(): void
+    {
+        $subclass = new ExampleWorkerSubclass();
+
+        $this->assertTrue($this->inspector->isOperation($subclass, 'sum'));
+    }
+
+    public function testHasOperationAttributeIsTrueForAnInheritedTaggedMethod(): void
+    {
+        $subclass = new ExampleWorkerSubclass();
+
+        $this->assertTrue($this->inspector->hasOperationAttribute($subclass, 'sum'));
+    }
+
+    public function testGetPublicMethodsIncludesBothInheritedAndOwnTaggedMethods(): void
+    {
+        $subclass = new ExampleWorkerSubclass();
+
+        $methods = $this->inspector->getPublicMethods($subclass);
+
+        $this->assertArrayHasKey('sum', $methods);
+        $this->assertArrayHasKey('multiply', $methods);
+    }
+
+    /**
+     * `getTaggedOperations()`/`getPublicMethods()`'s `$filters['operation']`
+     * were `Inspector`'s own, hardcoded reimplementation of exactly the rule
+     * `TaggedOperationPolicy` already embodies (whether a method carries
+     * `#[Operation]`) — a second, policy-independent way to decide "what
+     * counts as an operation", reachable straight off `Inspector` without
+     * ever going through an `OperationPolicyInterface`. That contradicts the
+     * same principle the inheritance fix above enforces: only a Policy may
+     * draw that line. A consumer who wants "the tagged operations of a
+     * worker" must get there the same way `Explorer` does — enumerate with
+     * `getPublicMethods($service)` (no filtering) and ask a Policy
+     * (`TaggedOperationPolicy`, via `hasOperationAttribute()`) about each
+     * candidate — never a shortcut baked into `Inspector` itself.
+     */
+    public function testGetPublicMethodsNeverFiltersByTheOperationAttributeItself(): void
+    {
+        $this->assertFalse(
+            method_exists(Inspector::class, 'getTaggedOperations'),
+        );
+
+        $reflection = new ReflectionMethod(Inspector::class, 'getPublicMethods');
+
+        $this->assertCount(
+            1,
+            $reflection->getParameters(),
+            'getPublicMethods() must take only $service — no $filters bag through '
+                . 'which Inspector could decide, on its own, what counts as an operation.'
+        );
     }
 
     public function testGetOperationParametersResolvesRequiredAndOptionalParameters(): void

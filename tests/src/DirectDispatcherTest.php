@@ -28,6 +28,7 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorkerSubclass;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -173,6 +174,45 @@ class DirectDispatcherTest extends TestCase
             'makeGreeting',
             ['name' => 'World']
         );
+    }
+
+    /**
+     * The worker registered here is `ExampleWorkerSubclass`, which inherits
+     * `sum()` from `ExampleWorker` without redeclaring it. With the default
+     * `AllowAllOperationPolicy`, this must dispatch exactly like `sum()`
+     * already does on `ExampleWorker` itself in the tests above — being
+     * inherited, rather than declared directly on the registered worker's
+     * own class, must never be a reason to refuse it.
+     */
+    public function testDispatchesAnOperationInheritedFromAParentWorkerClass(): void
+    {
+        $worker = new ExampleWorkerSubclass();
+        $component = new ExampleComponent(['example_worker' => $worker]);
+        $package = new ExamplePackage(['example_component' => $component]);
+
+        $registry = new ExamplePackageRegistry();
+        $registry->registerPackage('example_package', $package);
+
+        $inspector = new Inspector();
+        $dispatcher = new DirectDispatcher(
+            $registry,
+            $inspector,
+            new Resolver(
+                $inspector,
+                new Caster(new ObjectFactoryRegistry(fallback: new FromArrayDeserializer())),
+                new Validator()
+            ),
+        );
+
+        $result = $dispatcher->dispatch(
+            'example_package',
+            'example_component',
+            'example_worker',
+            'sum',
+            ['a' => 5, 'b' => 7]
+        );
+
+        $this->assertSame(12, $result);
     }
 
     public function testAllowListOperationPolicyStillPermitsTheListedOperation(): void

@@ -80,40 +80,6 @@ class CachedInspectorTest extends TestCase
         $cached->getPublicMethods($this->worker);
     }
 
-    public function testDifferentFiltersAreCachedSeparately(): void
-    {
-        $real = $this->createMock(InspectorInterface::class);
-        $real->expects($this->exactly(2))
-            ->method('getPublicMethods')
-            ->willReturnMap([
-                [$this->worker, [], ['sum' => [], 'describeBag' => []]],
-                [$this->worker, ['operation' => true], ['sum' => []]],
-            ]);
-
-        $cached = new CachedInspector($real, LocalCacheFactory::pool(LocalCacheBackend::Memory, 'test'));
-
-        $cached->getPublicMethods($this->worker);
-        $cached->getPublicMethods($this->worker, ['operation' => true]);
-        // Repeating both must not trigger a third/fourth real computation.
-        $cached->getPublicMethods($this->worker);
-        $cached->getPublicMethods($this->worker, ['operation' => true]);
-    }
-
-    public function testGetTaggedOperationsGoesThroughTheCachedGetPublicMethods(): void
-    {
-        $real = $this->createMock(InspectorInterface::class);
-        $real->expects($this->once())
-            ->method('getPublicMethods')
-            ->with($this->worker, ['operation' => true])
-            ->willReturn(['sum' => ['name' => 'sum']]);
-
-        $cached = new CachedInspector($real, LocalCacheFactory::pool(LocalCacheBackend::Memory, 'test'));
-
-        $this->assertSame(['sum' => ['name' => 'sum']], $cached->getTaggedOperations($this->worker));
-        // Second call must hit the cache, not the real inspector again.
-        $cached->getTaggedOperations($this->worker);
-    }
-
     public function testTtlOfZeroBypassesTheCacheEntirely(): void
     {
         $real = $this->createMock(InspectorInterface::class);

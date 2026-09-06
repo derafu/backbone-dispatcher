@@ -17,12 +17,14 @@ use Derafu\BackboneDispatcher\Exception\OperationNotAllowedException;
 use Derafu\BackboneDispatcher\Exception\OperationNotFoundException;
 use Derafu\BackboneDispatcher\Service\Discovery\Explorer;
 use Derafu\BackboneDispatcher\Service\Policy\AllowListOperationPolicy;
+use Derafu\BackboneDispatcher\Service\Policy\TaggedOperationPolicy;
 use Derafu\BackboneDispatcher\Service\Reflection\Inspector;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponentWithoutDescription;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorkerSubclass;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -30,6 +32,7 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Explorer::class)]
 #[UsesClass(Inspector::class)]
 #[UsesClass(AllowListOperationPolicy::class)]
+#[UsesClass(TaggedOperationPolicy::class)]
 #[UsesClass(OperationNotFoundException::class)]
 #[UsesClass(OperationNotAllowedException::class)]
 #[UsesClass(InvalidDiscoveryIdException::class)]
@@ -159,6 +162,36 @@ class ExplorerTest extends TestCase
         $this->assertContains('describeBag', $names);
         $this->assertContains('makeGreeting', $names);
         $this->assertContains('fail', $names);
+    }
+
+    /**
+     * `sum()` is inherited from `ExampleWorker` without being redeclared on
+     * `ExampleWorkerSubclass` — it must still be listed, and still pass
+     * `TaggedOperationPolicy`, exactly like `multiply()` (declared directly
+     * on the subclass) does.
+     */
+    public function testGetOperationsIncludesAnOperationInheritedFromAParentClass(): void
+    {
+        $worker = new ExampleWorkerSubclass();
+        $component = new ExampleComponent(['example_worker' => $worker]);
+        $package = new ExamplePackage(['example_component' => $component]);
+
+        $registry = new ExamplePackageRegistry();
+        $registry->registerPackage('example_package', $package);
+
+        $explorer = new Explorer(
+            $registry,
+            $this->inspector,
+            new TaggedOperationPolicy($registry, $this->inspector),
+        );
+
+        $names = array_column(
+            $explorer->getOperations('example_package', 'example_component', 'example_worker'),
+            'name'
+        );
+
+        $this->assertContains('sum', $names);
+        $this->assertContains('multiply', $names);
     }
 
     public function testGetOperationsFiltersSilentlyByPolicy(): void

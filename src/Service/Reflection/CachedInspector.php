@@ -70,14 +70,6 @@ class CachedInspector implements InspectorInterface
     /**
      * {@inheritDoc}
      */
-    public function getTaggedOperations(object $service): array
-    {
-        return $this->getPublicMethods($service, ['operation' => true]);
-    }
-
-    /**
-     * {@inheritDoc}
-     */
     public function isOperation(object $service, string $method): bool
     {
         return $this->inspector->isOperation($service, $method);
@@ -102,11 +94,11 @@ class CachedInspector implements InspectorInterface
     /**
      * {@inheritDoc}
      */
-    public function getPublicMethods(object $service, array $filters = []): array
+    public function getPublicMethods(object $service): array
     {
         return $this->remember(
-            $this->cacheKey->build('backbone_dispatcher.public_methods', $service::class, $filters ?: null),
-            fn () => $this->inspector->getPublicMethods($service, $filters)
+            $this->cacheKey->build('backbone_dispatcher.public_methods', $service::class),
+            fn () => $this->inspector->getPublicMethods($service)
         );
     }
 

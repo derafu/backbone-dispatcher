@@ -18,6 +18,7 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage;
 use Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorker;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleWorkerSubclass;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -67,6 +68,31 @@ class TaggedOperationPolicyTest extends TestCase
             'example_component',
             'example_worker',
             'doesNotExist'
+        ));
+    }
+
+    /**
+     * The worker registered here is `ExampleWorkerSubclass`, which inherits
+     * `sum()` from `ExampleWorker` without redeclaring it — the exact shape
+     * of a downstream package extending an upstream worker. The tag lives
+     * on the parent's declaration; the policy must still see it.
+     */
+    public function testAllowsAnInheritedOperationTaggedOnAParentClass(): void
+    {
+        $worker = new ExampleWorkerSubclass();
+        $component = new ExampleComponent(['example_worker' => $worker]);
+        $package = new ExamplePackage(['example_component' => $component]);
+
+        $registry = new ExamplePackageRegistry();
+        $registry->registerPackage('example_package', $package);
+
+        $policy = new TaggedOperationPolicy($registry, new Inspector());
+
+        $this->assertTrue($policy->isAllowed(
+            'example_package',
+            'example_component',
+            'example_worker',
+            'sum'
         ));
     }
 }

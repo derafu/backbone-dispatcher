@@ -75,26 +75,21 @@ class Inspector implements InspectorInterface
     }
 
     /**
-     * Gets the operations of a class tagged with `#[Operation]`.
-     *
-     * @param object $service
-     * @return array
-     */
-    public function getTaggedOperations(object $service): array
-    {
-        return $this->getPublicMethods($service, ['operation' => true]);
-    }
-
-    /**
      * Checks whether `$method` is an operation of `$service`: a public
-     * method declared directly on its class (not inherited), whose name
-     * does not start with `_`.
+     * method that exists on it (whether declared on its own class or
+     * inherited from a parent), whose name does not start with `_`.
      *
-     * This is the single definition of "operation" the rest of the package
-     * relies on: `getPublicMethods()` uses it to decide what to list,
-     * `DirectDispatcher` uses it to decide what may be invoked at all
-     * (regardless of any `OperationPolicyInterface`), and
-     * `hasOperationAttribute()` builds on it.
+     * This is a purely technical, factual check — is there a real, callable
+     * public method by this name at all — and nothing more: it never judges
+     * whether the method is *meant* to be exposed as a business operation.
+     * That judgment belongs solely to whichever `OperationPolicyInterface`
+     * is configured (`AllowAllOperationPolicy`, `TaggedOperationPolicy`,
+     * etc.); this method, `getPublicMethods()`, and
+     * `hasOperationAttribute()` must never draw that line themselves.
+     *
+     * `DirectDispatcher` uses this to decide whether the operation exists
+     * at all (`OperationNotFoundException` otherwise), strictly before, and
+     * independently of, consulting the `OperationPolicyInterface`.
      *
      * @param object $service
      * @param string $method
@@ -145,11 +140,15 @@ class Inspector implements InspectorInterface
     /**
      * Gets the public methods of a class with its parameters.
      *
+     * Never filters by `#[Operation]` or anything else: deciding which of
+     * these public methods counts as an exposed operation is exclusively
+     * an `OperationPolicyInterface`'s call, made by the caller (see
+     * `Explorer`), never by `Inspector` itself.
+     *
      * @param object $service
-     * @param array $filters
      * @return array
      */
-    public function getPublicMethods(object $service, array $filters = []): array
+    public function getPublicMethods(object $service): array
     {
         $reflection = $this->reflectClass($service);
 
@@ -158,23 +157,14 @@ class Inspector implements InspectorInterface
         $contextFactory = new ContextFactory();
 
         foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->getDeclaringClass()->getName() !== $reflection->getName()) {
+            $name = $method->getName();
+
+            if (!$this->isOperationMethod($reflection, $name)) {
                 continue;
             }
 
             $attributes = $method->getAttributes(Operation::class);
-
-            if (!empty($filters['operation']) && empty($attributes)) {
-                continue;
-            }
-
             $operationAttribute = $attributes !== [] ? $attributes[0]->newInstance() : null;
-
-            $name = $method->getName();
-
-            if ($name[0] === '_') {
-                continue;
-            }
 
             $docComment = $method->getDocComment();
             $docBlock = $docComment
@@ -238,11 +228,18 @@ class Inspector implements InspectorInterface
     }
 
     /**
-     * Checks whether `$method` is a public method declared directly on
-     * `$reflection`'s class (not inherited), whose name does not start
-     * with `_` — the single definition of "operation" `isOperation()` and
-     * `hasOperationAttribute()` both build on, given an already-reflected
-     * class so neither has to reflect it twice.
+     * Checks whether `$method` is a public method of `$reflection`'s class
+     * (declared on it directly or inherited from a parent class), whose
+     * name does not start with `_` — the single definition of "operation"
+     * `isOperation()`, `getPublicMethods()`, and `hasOperationAttribute()`
+     * all build on, given an already-reflected class so none of them has
+     * to reflect it twice.
+     *
+     * Deliberately silent on *which* declaring class the method comes
+     * from: that detail is an implementation accident of the class
+     * hierarchy, never a reason on its own to treat a method as not being
+     * an operation. See `isOperation()`'s docblock for why this method
+     * must stay a purely factual existence check.
      *
      * @param ReflectionClass $reflection
      * @param string $method
@@ -254,11 +251,7 @@ class Inspector implements InspectorInterface
             return false;
         }
 
-        $reflectionMethod = $reflection->getMethod($method);
-
-        return $reflectionMethod->isPublic()
-            && $reflectionMethod->getDeclaringClass()->getName() === $reflection->getName()
-        ;
+        return $reflection->getMethod($method)->isPublic();
     }
 
     /**

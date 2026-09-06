@@ -34,17 +34,14 @@ interface InspectorInterface
     public function getClassDoc(object $service): array;
 
     /**
-     * Gets the operations of a class tagged with `#[Operation]`.
-     *
-     * @param object $service
-     * @return array
-     */
-    public function getTaggedOperations(object $service): array;
-
-    /**
      * Checks whether `$method` is an operation of `$service`: a public
-     * method declared directly on its class (not inherited), whose name
-     * does not start with `_`.
+     * method that exists on it (declared directly or inherited), whose
+     * name does not start with `_`.
+     *
+     * A purely technical existence check, never a judgment on whether the
+     * method is meant to be exposed as a business operation — that is
+     * exclusively an `OperationPolicyInterface`'s call. See `Inspector`'s
+     * own docblock for why.
      *
      * @param object $service
      * @param string $method
@@ -74,9 +71,13 @@ interface InspectorInterface
     /**
      * Gets the public methods of a class with its parameters.
      *
+     * Never filters by `#[Operation]` or anything else: deciding which of
+     * these public methods counts as an exposed operation is exclusively
+     * an `OperationPolicyInterface`'s call, made by the caller (see
+     * `Explorer`), never by `Inspector` itself.
+     *
      * @param object $service
-     * @param array $filters
      * @return array
      */
-    public function getPublicMethods(object $service, array $filters = []): array;
+    public function getPublicMethods(object $service): array;
 }
