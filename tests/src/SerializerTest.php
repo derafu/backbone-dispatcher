@@ -13,8 +13,11 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Service\Serialization\Serializer;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleBackedEnum;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleJsonSerializableEnum;
+use Derafu\TestsBackboneDispatcher\Fixture\ExamplePureEnum;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use stdClass;
@@ -89,5 +92,43 @@ class SerializerTest extends TestCase
         $object->foo = 'bar';
 
         $this->assertSame($object, $this->serializer->serialize($object));
+    }
+
+    public function testBackedEnumIsFlattenedUsingNameAndValue(): void
+    {
+        $this->assertSame(
+            ['name' => 'Active', 'value' => 'active'],
+            $this->serializer->serialize(ExampleBackedEnum::Active)
+        );
+    }
+
+    public function testPureEnumIsFlattenedUsingOnlyName(): void
+    {
+        $this->assertSame(
+            ['name' => 'Active'],
+            $this->serializer->serialize(ExamplePureEnum::Active)
+        );
+    }
+
+    public function testEnumImplementingJsonSerializableTakesPrecedenceOverGenericFlattening(): void
+    {
+        $this->assertSame(
+            ['label' => 'Custom label'],
+            $this->serializer->serialize(ExampleJsonSerializableEnum::Active)
+        );
+    }
+
+    public function testArrayOfEnumsIsRecursivelyFlattened(): void
+    {
+        $this->assertSame(
+            [
+                ['name' => 'Active', 'value' => 'active'],
+                ['name' => 'Inactive', 'value' => 'inactive'],
+            ],
+            $this->serializer->serialize([
+                ExampleBackedEnum::Active,
+                ExampleBackedEnum::Inactive,
+            ])
+        );
     }
 }
