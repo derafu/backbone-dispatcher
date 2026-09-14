@@ -63,6 +63,15 @@ class Caster
             return $value;
         }
 
+        if ($from === 'array_of_object') {
+            $elementClass = substr($to, 0, -2); // Strip the trailing '[]'.
+
+            return array_map(
+                fn (mixed $item): mixed => $this->objectFactory->create($item, $elementClass),
+                $value
+            );
+        }
+
         if ($from === 'object') {
             if ($to === 'array' && is_array($value)) {
                 return $value;
@@ -125,11 +134,22 @@ class Caster
      * of `json_decode()` (or an equivalent transport) as one of those PHP
      * scalar types, so nothing needs to be cast at all.
      *
+     * A `'SomeClass[]'` type (an `array` parameter whose PHPDoc `@param`
+     * documented its element class, see `Inspector::resolveArrayElementType()`)
+     * resolves to its own `'array_of_object'` strategy, never `'object'` —
+     * `cast()` needs to loop the value and hydrate each element, not hand
+     * the whole array to `ObjectFactoryInterface` as if it were a single
+     * object.
+     *
      * @param string $type
      * @return string
      */
     public function resolveCastStrategy(string $type): string
     {
+        if (str_ends_with($type, '[]')) {
+            return 'array_of_object';
+        }
+
         if (str_contains($type, '|')) {
             foreach (explode('|', $type) as $candidate) {
                 if ($this->translateScalarName($candidate) === 'object') {
@@ -148,11 +168,21 @@ class Caster
      * Schema type name, falling back to `'object'` for anything that is not
      * one of the known scalar type names (i.e. a class/interface name).
      *
+     * `'SomeClass[]'` (see `resolveCastStrategy()`) translates to plain
+     * `'array'` here — for documentation purposes (this method's only
+     * other caller, `resolveType()`) the runtime shape is still a JSON
+     * array, regardless of whether `cast()` also knows to hydrate each of
+     * its elements.
+     *
      * @param string $type
      * @return string
      */
     private function translateScalarName(string $type): string
     {
+        if (str_ends_with($type, '[]')) {
+            return 'array';
+        }
+
         return match ($type) {
             'string' => 'string',
             'float' => 'number',

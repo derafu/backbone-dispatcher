@@ -21,7 +21,9 @@ use phpDocumentor\Reflection\DocBlock\Tags\Return_;
 use phpDocumentor\Reflection\DocBlock\Tags\Throws;
 use phpDocumentor\Reflection\DocBlockFactory;
 use phpDocumentor\Reflection\DocBlockFactoryInterface;
+use phpDocumentor\Reflection\Types\AbstractList;
 use phpDocumentor\Reflection\Types\ContextFactory;
+use phpDocumentor\Reflection\Types\Object_;
 use ReflectionClass;
 use ReflectionMethod;
 use ReflectionNamedType;
@@ -119,11 +121,16 @@ class Inspector implements InspectorInterface
     /**
      * Gets the parameters of one operation of a worker, by name.
      *
-     * Narrow and deliberately cheap: unlike `getPublicMethods()`, this never
-     * touches PHPDoc — `Resolver` only ever needs `name`/`type`/`required`/
-     * `default` to cast and validate arguments, not `description`. Building
-     * the `ReflectionMethod` here (instead of the caller building it) is
-     * what keeps `Resolver` from importing anything from `Reflection*`.
+     * Narrow and deliberately cheap: unlike `getPublicMethods()`, this only
+     * ever touches PHPDoc for a parameter reflection alone cannot describe
+     * completely — a native `array $items` carries no element type, since
+     * PHP has no generics, so a bare `array` never has anything more to
+     * learn from PHPDoc. `Resolver` only ever needs `name`/`type`/
+     * `required`/`default` to cast and validate arguments, not
+     * `description`, which is why every parameter that isn't `array` keeps
+     * skipping PHPDoc entirely, exactly as before. Building the
+     * `ReflectionMethod` here (instead of the caller building it) is what
+     * keeps `Resolver` from importing anything from `Reflection*`.
      *
      * @param object $service
      * @param string $method
@@ -131,7 +138,67 @@ class Inspector implements InspectorInterface
      */
     public function getOperationParameters(object $service, string $method): array
     {
-        return $this->getParameters(new ReflectionMethod($service, $method));
+        $reflectionMethod = new ReflectionMethod($service, $method);
+
+        $docBlock = $this->hasArrayParameter($reflectionMethod)
+            ? $this->resolveMethodDocBlockForParameters($reflectionMethod)
+            : null
+        ;
+
+        return $this->getParameters($reflectionMethod, $docBlock);
+    }
+
+    /**
+     * Checks whether any of `$method`'s parameters is natively typed
+     * `array` — the only case `getOperationParameters()` ever needs to
+     * fall back to PHPDoc for (to find the array's element type, which
+     * reflection alone can never report). Kept as a separate, first pass
+     * specifically so the overwhelmingly common case (no `array` parameter
+     * at all) never builds a `DocBlock` — see `getOperationParameters()`'s
+     * own docblock for why that matters.
+     *
+     * @param ReflectionMethod $method
+     * @return bool
+     */
+    private function hasArrayParameter(ReflectionMethod $method): bool
+    {
+        foreach ($method->getParameters() as $parameter) {
+            if ($this->resolveTypeName($parameter->getType()) === 'array') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Resolves `$method`'s `DocBlock`, with `{@inheritDoc}` already
+     * resolved against a parent class/interface (see `resolveInheritDoc()`)
+     * — the same mechanism `getPublicMethods()` uses, extracted here so
+     * `getOperationParameters()` can reuse it without also computing
+     * everything else `getPublicMethods()` does.
+     *
+     * @param ReflectionMethod $method
+     * @return DocBlock|null
+     */
+    private function resolveMethodDocBlockForParameters(ReflectionMethod $method): ?DocBlock
+    {
+        $docBlockFactory = DocBlockFactory::createInstance();
+
+        $docComment = $method->getDocComment();
+        $docBlock = $docComment
+            ? $docBlockFactory->create(
+                $docComment,
+                (new ContextFactory())->createFromReflector($method)
+            )
+            : null
+        ;
+
+        return $this->resolveInheritDoc(
+            $docComment,
+            $docBlock,
+            fn () => $this->resolveInheritedMethodDoc($method, $docBlockFactory)
+        );
     }
 
     /**
@@ -540,6 +607,13 @@ class Inspector implements InspectorInterface
                 }
             }
 
+            if ($typeName === 'array') {
+                $elementType = $this->resolveArrayElementType($docParam);
+                if ($elementType !== null) {
+                    $typeName = $elementType . '[]';
+                }
+            }
+
             $paramInfo = [
                 'name' => $parameter->getName(),
                 'type' => $typeName,
@@ -555,6 +629,46 @@ class Inspector implements InspectorInterface
         }
 
         return $parametersInfo;
+    }
+
+    /**
+     * Resolves the element class of an `array`-typed parameter from its
+     * `@param` tag — `X[]`, `iterable<X>`, and `Collection<X>` are all
+     * represented the same way by phpDocumentor (`AbstractList
+     * ::getValueType()`), so all three are recognized here.
+     *
+     * Anything else (no tag at all, a bare `array`/`mixed[]`, an element
+     * type that isn't a class/interface) resolves to `null` — the
+     * parameter's type stays the plain `'array'` reflection already gave,
+     * exactly as before this method existed. Nothing downstream needs (or
+     * is able) to distinguish those cases from a true "we don't know, or
+     * it's not objects" array.
+     *
+     * @param Param|null $docParam
+     * @return string|null The element's FQCN (without a leading `\`), or
+     * `null`.
+     */
+    private function resolveArrayElementType(?Param $docParam): ?string
+    {
+        if ($docParam === null) {
+            return null;
+        }
+
+        $type = $docParam->getType();
+
+        if (!$type instanceof AbstractList) {
+            return null;
+        }
+
+        $valueType = $type->getValueType();
+
+        if (!$valueType instanceof Object_) {
+            return null;
+        }
+
+        $fqsen = $valueType->getFqsen();
+
+        return $fqsen !== null ? ltrim((string) $fqsen, '\\') : null;
     }
 
     /**

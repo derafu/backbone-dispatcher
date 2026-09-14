@@ -88,6 +88,39 @@ class ExampleWorker implements WorkerInterface
     }
 
     /**
+     * An operation with an array-of-objects parameter — each element must
+     * be deserialized the same way a single `ExampleBag $bag` parameter
+     * already is, not left as a raw array. The `ExampleBag[]` in `@param`
+     * is what `Inspector` needs to resolve the element type; reflection
+     * alone only ever reports the parameter's native type as `array`.
+     *
+     * @param ExampleBag[] $bags
+     */
+    public function describeBags(array $bags): array
+    {
+        return array_map(
+            static fn (ExampleBag $bag): array => [
+                'name' => $bag->getName(),
+                'doubled' => $bag->getAmount() * 2,
+            ],
+            $bags
+        );
+    }
+
+    /**
+     * Same as `describeBags()`, but documented with the `array<ExampleBag>`
+     * generic syntax instead of the `ExampleBag[]` shorthand — phpDocumentor
+     * represents both as the same `Array_` type (`AbstractList
+     * ::getValueType()`), so `Inspector` must resolve this one identically.
+     *
+     * @param array<ExampleBag> $bags
+     */
+    public function describeBagsGenericSyntax(array $bags): array
+    {
+        return $this->describeBags($bags);
+    }
+
+    /**
      * An operation that returns a domain object (not an array). Used to
      * verify that `DirectDispatcher`/`TypedDispatcher` return it unaltered,
      * and that `SafeDispatcher` flattens it via the Serializer.

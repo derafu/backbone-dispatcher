@@ -97,6 +97,47 @@ class ResolverTest extends TestCase
         $this->assertSame(4, $args['bag']->getAmount());
     }
 
+    public function testResolvesAndDeserializesAnArrayOfObjectParameters(): void
+    {
+        // Each element must come out hydrated, exactly like a single
+        // `ExampleBag $bag` parameter already does — not left as the raw
+        // array `json_decode()`/an equivalent transport would have produced.
+        $args = $this->resolver->resolve($this->worker, 'describeBags', [
+            'bags' => [
+                ['name' => 'folios', 'amount' => 4],
+                ['name' => 'certificados', 'amount' => 2],
+            ],
+        ]);
+
+        $this->assertIsArray($args['bags']);
+        $this->assertCount(2, $args['bags']);
+
+        $this->assertInstanceOf(ExampleBag::class, $args['bags'][0]);
+        $this->assertSame('folios', $args['bags'][0]->getName());
+        $this->assertSame(4, $args['bags'][0]->getAmount());
+
+        $this->assertInstanceOf(ExampleBag::class, $args['bags'][1]);
+        $this->assertSame('certificados', $args['bags'][1]->getName());
+        $this->assertSame(2, $args['bags'][1]->getAmount());
+    }
+
+    public function testResolvesAndDeserializesAnArrayOfObjectParametersUsingTheGenericSyntax(): void
+    {
+        // Same as the `ExampleBag[]` case above, but the operation's PHPDoc
+        // spells the element type as `array<ExampleBag>` instead — must
+        // resolve identically, since phpDocumentor represents both the
+        // same way (`AbstractList::getValueType()`).
+        $args = $this->resolver->resolve($this->worker, 'describeBagsGenericSyntax', [
+            'bags' => [
+                ['name' => 'folios', 'amount' => 4],
+            ],
+        ]);
+
+        $this->assertInstanceOf(ExampleBag::class, $args['bags'][0]);
+        $this->assertSame('folios', $args['bags'][0]->getName());
+        $this->assertSame(4, $args['bags'][0]->getAmount());
+    }
+
     public function testResolvesAndDeserializesAnObjectParameterUsingARegisteredDeserializer(): void
     {
         // Unlike setUp()'s $this->resolver (fallback-only), this one has an

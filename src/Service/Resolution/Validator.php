@@ -25,12 +25,21 @@ class Validator
      * so a candidate that is itself an unknown type (a class/interface name)
      * keeps being permissive exactly like a bare unknown type would.
      *
+     * A `'SomeClass[]'` type (see `Caster::resolveCastStrategy()`) is
+     * validated the same as a bare `'array'` — the runtime shape the value
+     * must have is still an array, regardless of what `cast()` will later
+     * hydrate each element into.
+     *
      * @param mixed $value
      * @param string $type
      * @return boolean
      */
     public function validate(mixed $value, string $type): bool
     {
+        if (str_ends_with($type, '[]')) {
+            return is_array($value);
+        }
+
         if (str_contains($type, '|')) {
             foreach (explode('|', $type) as $candidate) {
                 if ($this->validate($value, $candidate)) {
