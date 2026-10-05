@@ -36,10 +36,12 @@
         "friendsofphp/php-cs-fixer": "^3.95",
         "opis/json-schema": "^2.6",
         "phpstan/phpstan": "^2.2",
-        "phpunit/phpunit": "^13.3"
+        "phpunit/phpunit": "^13.4",
+        "nikic/php-parser": "^5.9"
     },
     "suggest": {
-        "opis/json-schema": "Required to use AbstractDeserializer::assertSchema()."
+        "opis/json-schema": "Required to use AbstractDeserializer::assertSchema().",
+        "nikic/php-parser": "Required by the tests of the messages of the package (Derafu\\Translation\\Lint reads the code)."
     },
     "scripts": {
         "docs": "php tools/phpdocumentor run --config=phpdoc.xml",
