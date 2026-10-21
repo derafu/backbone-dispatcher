@@ -23,6 +23,7 @@ use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\BackboneDispatcher\ValueObject\OperationResult;
 use Derafu\BackboneDispatcher\ValueObject\ProblemDetail;
 use Derafu\BackboneDispatcher\ValueObject\SafeThrowable;
+use Derafu\Translation\Exception\Core\TranslatableLogicException as LogicException;
 use Throwable;
 
 /**
@@ -62,13 +63,18 @@ class SafeDispatcher implements SafeDispatcherInterface
         $monotonicStart = hrtime(true);
         $startMemory = memory_get_usage(true);
         $startCpuUsage = getrusage();
+        $startCpuUsage = $startCpuUsage === false ? null : $startCpuUsage;
 
         try {
             $result = $this->typedDispatcher->dispatch($request);
+            $dataType = $result->getDataType();
+            if ($dataType === null) {
+                throw new LogicException('A successful operation result must specify its data type.');
+            }
             $value = $this->serializer->serialize($result->getValue());
             $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
 
-            return OperationResult::success($value, $metadata, $result->getDataType());
+            return OperationResult::success($value, $metadata, $dataType);
         } catch (Throwable $e) {
             $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
 

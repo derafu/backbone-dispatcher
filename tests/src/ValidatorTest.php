@@ -63,4 +63,13 @@ class ValidatorTest extends TestCase
             'SomeInterface\That\Does\Not\Exist|string'
         ));
     }
+
+    #[TestWith([[], true])]
+    #[TestWith([['name' => 'value'], true])]
+    #[TestWith(['not an array', false])]
+    #[TestWith([null, false])]
+    public function testObjectArrayTypesRequireAnArrayWithoutHydratingItsItems(mixed $value, bool $expected): void
+    {
+        $this->assertSame($expected, $this->validator->validate($value, 'Example[]'));
+    }
 }

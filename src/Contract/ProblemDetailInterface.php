@@ -73,7 +73,7 @@ interface ProblemDetailInterface extends Stringable, JsonSerializable
     /**
      * Gets additional, problem-specific context.
      *
-     * @return array
+     * @return array<array-key, mixed>
      */
     public function getContext(): array;
 
@@ -106,7 +106,13 @@ interface ProblemDetailInterface extends Stringable, JsonSerializable
     /**
      * Converts the problem detail to an array.
      *
-     * @return array
+     * @return array{
+     *     type: string, title: string, detail: string, instance: string|null,
+     *     extensions: array{
+     *         timestamp: float, data_type: null, environment: string, debug: bool,
+     *         context: array<array-key, mixed>, throwable: SafeThrowableInterface|null
+     *     }
+     * }
      */
     public function toArray(): array;
 }

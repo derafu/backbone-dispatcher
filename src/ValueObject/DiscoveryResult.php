@@ -70,7 +70,7 @@ class DiscoveryResult implements DiscoveryResultInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null}
      */
     public function jsonSerialize(): array
     {

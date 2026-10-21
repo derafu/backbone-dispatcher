@@ -26,6 +26,9 @@ use Throwable;
  */
 class SafeThrowable implements SafeThrowableInterface
 {
+    /**
+     * @param array<int, array{file?: string, line?: int, function?: string, class?: string, type?: string, args?: array<array-key, mixed>, object?: object}> $trace
+     */
     public function __construct(
         private readonly string $class,
         private readonly int $code,
@@ -193,7 +196,10 @@ class SafeThrowable implements SafeThrowableInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array{
+     *     class: string, code: int, message: string, file: string, line: int,
+     *     trace: array<int, array{file?: string, line?: int, function?: string, class?: string, type?: string, args?: array<array-key, mixed>, object?: object}>, previous: SafeThrowableInterface|null
+     * }
      */
     public function jsonSerialize(): array
     {

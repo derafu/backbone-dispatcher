@@ -32,6 +32,7 @@ class ExampleGreeting implements JsonSerializable
         return $this->message;
     }
 
+    /** @return array{message: string, reply: ExampleGreeting|null} */
     public function jsonSerialize(): array
     {
         return [

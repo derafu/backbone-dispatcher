@@ -47,8 +47,8 @@ class Resolver
      *
      * @param WorkerInterface $workerInstance
      * @param string $operation
-     * @param array $requestParameters
-     * @return array
+     * @param array<string, mixed> $requestParameters
+     * @return array<string, mixed>
      */
     public function resolve(
         WorkerInterface $workerInstance,

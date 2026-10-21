@@ -25,14 +25,14 @@ class ExecutionMetadata implements ExecutionMetadataInterface
         private readonly string $finishedAt,
         private readonly float $timestamp,
         private readonly float $realTime,
-        private readonly float $userTime,
-        private readonly float $systemTime,
+        private readonly ?float $userTime,
+        private readonly ?float $systemTime,
         private readonly int $memoryUsed,
         private readonly int $peakMemory,
-        private readonly int $pid,
-        private readonly float $loadAverage1Min,
-        private readonly float $loadAverage5Min,
-        private readonly float $loadAverage15Min
+        private readonly ?int $pid,
+        private readonly ?float $loadAverage1Min,
+        private readonly ?float $loadAverage5Min,
+        private readonly ?float $loadAverage15Min
     ) {
     }
 
@@ -51,33 +51,38 @@ class ExecutionMetadata implements ExecutionMetadataInterface
      * only to compute `getRealTime()` safely against clock adjustments.
      * @param int $startMemory `memory_get_usage(true)` reading taken at
      * the start.
-     * @param array $startCpuUsage `getrusage()` reading taken at the start.
+     * @param array<string, int>|null $startCpuUsage Starting `getrusage()` reading,
+     * or null when unavailable.
      * @return self
      */
     public static function since(
         string $startedAt,
         int $monotonicStart,
         int $startMemory,
-        array $startCpuUsage
+        ?array $startCpuUsage
     ): self {
         $endCpuUsage = getrusage();
         $loadAverage = sys_getloadavg();
+        $pid = getmypid();
+        $hasCpuUsage = $startCpuUsage !== null && $endCpuUsage !== false;
 
         return new self(
             startedAt: $startedAt,
             finishedAt: date(DATE_ATOM),
             timestamp: microtime(true),
             realTime: (hrtime(true) - $monotonicStart) / 1_000_000_000,
-            userTime: self::cpuSeconds($endCpuUsage, 'ru_utime')
-                - self::cpuSeconds($startCpuUsage, 'ru_utime'),
-            systemTime: self::cpuSeconds($endCpuUsage, 'ru_stime')
-                - self::cpuSeconds($startCpuUsage, 'ru_stime'),
+            userTime: $hasCpuUsage
+                ? self::cpuSeconds($endCpuUsage, 'ru_utime') - self::cpuSeconds($startCpuUsage, 'ru_utime')
+                : null,
+            systemTime: $hasCpuUsage
+                ? self::cpuSeconds($endCpuUsage, 'ru_stime') - self::cpuSeconds($startCpuUsage, 'ru_stime')
+                : null,
             memoryUsed: memory_get_usage(true) - $startMemory,
             peakMemory: memory_get_peak_usage(true),
-            pid: getmypid(),
-            loadAverage1Min: $loadAverage[0],
-            loadAverage5Min: $loadAverage[1],
-            loadAverage15Min: $loadAverage[2],
+            pid: $pid === false ? null : $pid,
+            loadAverage1Min: $loadAverage === false ? null : $loadAverage[0],
+            loadAverage5Min: $loadAverage === false ? null : $loadAverage[1],
+            loadAverage15Min: $loadAverage === false ? null : $loadAverage[2],
         );
     }
 
@@ -85,7 +90,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
      * Reads one `getrusage()` field pair (`"{$prefix}.tv_sec"` +
      * `"{$prefix}.tv_usec"`) as a single seconds value.
      *
-     * @param array $usage
+     * @param array<string, int> $usage
      * @param string $prefix `'ru_utime'` or `'ru_stime'`.
      * @return float
      */
@@ -129,7 +134,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getUserTime(): float
+    public function getUserTime(): ?float
     {
         return $this->userTime;
     }
@@ -137,7 +142,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getSystemTime(): float
+    public function getSystemTime(): ?float
     {
         return $this->systemTime;
     }
@@ -161,7 +166,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getPid(): int
+    public function getPid(): ?int
     {
         return $this->pid;
     }
@@ -169,7 +174,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getLoadAverage1Min(): float
+    public function getLoadAverage1Min(): ?float
     {
         return $this->loadAverage1Min;
     }
@@ -177,7 +182,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getLoadAverage5Min(): float
+    public function getLoadAverage5Min(): ?float
     {
         return $this->loadAverage5Min;
     }
@@ -185,7 +190,7 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     /**
      * {@inheritDoc}
      */
-    public function getLoadAverage15Min(): float
+    public function getLoadAverage15Min(): ?float
     {
         return $this->loadAverage15Min;
     }
@@ -212,7 +217,12 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array{
+     *     startedAt: string, finishedAt: string, timestamp: float,
+     *     realTime: float, userTime: float|null, systemTime: float|null,
+     *     memoryUsed: int, peakMemory: int, pid: int|null,
+     *     loadAverage1Min: float|null, loadAverage5Min: float|null, loadAverage15Min: float|null
+     * }
      */
     public function jsonSerialize(): array
     {

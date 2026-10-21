@@ -47,7 +47,7 @@ interface DiscoveryResultInterface extends JsonSerializable
     /**
      * Converts the discovery result to an array.
      *
-     * @return array
+     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null}
      */
     public function toArray(): array;
 }

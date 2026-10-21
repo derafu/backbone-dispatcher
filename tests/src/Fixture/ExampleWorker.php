@@ -78,6 +78,8 @@ class ExampleWorker implements WorkerInterface
     /**
      * An operation with a required object parameter, deserialized from an
      * array by the ObjectFactoryRegistry.
+     *
+     * @return array{name: string, doubled: int}
      */
     public function describeBag(ExampleBag $bag): array
     {
@@ -95,6 +97,7 @@ class ExampleWorker implements WorkerInterface
      * alone only ever reports the parameter's native type as `array`.
      *
      * @param ExampleBag[] $bags
+     * @return array<array-key, array{name: string, doubled: int}>
      */
     public function describeBags(array $bags): array
     {
@@ -114,6 +117,7 @@ class ExampleWorker implements WorkerInterface
      * ::getValueType()`), so `Inspector` must resolve this one identically.
      *
      * @param array<ExampleBag> $bags
+     * @return array<array-key, array{name: string, doubled: int}>
      */
     public function describeBagsGenericSyntax(array $bags): array
     {

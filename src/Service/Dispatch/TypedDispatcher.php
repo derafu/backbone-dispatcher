@@ -51,6 +51,7 @@ class TypedDispatcher implements TypedDispatcherInterface
         $monotonicStart = hrtime(true);
         $startMemory = memory_get_usage(true);
         $startCpuUsage = getrusage();
+        $startCpuUsage = $startCpuUsage === false ? null : $startCpuUsage;
 
         $value = $this->directDispatcher->dispatch(
             $request->getPackage(),

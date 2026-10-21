@@ -21,6 +21,7 @@ use Derafu\BackboneDispatcher\Contract\SafeThrowableInterface;
  */
 class ProblemDetail implements ProblemDetailInterface
 {
+    /** @param array<array-key, mixed> $context */
     public function __construct(
         private readonly string $detail,
         private readonly SafeThrowableInterface $throwable,
@@ -166,7 +167,13 @@ class ProblemDetail implements ProblemDetailInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array{
+     *     type: string, title: string, detail: string, instance: string|null,
+     *     extensions: array{
+     *         timestamp: float, data_type: null, environment: string, debug: bool,
+     *         context: array<array-key, mixed>, throwable: SafeThrowableInterface|null
+     *     }
+     * }
      */
     public function jsonSerialize(): array
     {

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Service\Resolution;
 
 use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
+use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
 
 /**
  * Class for handling the mapping and conversion between internal data types of
@@ -40,6 +41,10 @@ class Caster
             return null;
         }
 
+        if ($from === 'string' && !is_string($value)) {
+            throw InvalidParameterTypeException::forParameter('value', 'string');
+        }
+
         if ($from === $to) {
             return $value;
         }
@@ -64,10 +69,13 @@ class Caster
         }
 
         if ($from === 'array_of_object') {
+            if (!is_array($value)) {
+                throw InvalidParameterTypeException::forParameter('value', 'array');
+            }
             $elementClass = substr($to, 0, -2); // Strip the trailing '[]'.
 
             return array_map(
-                fn (mixed $item): mixed => $this->objectFactory->create($item, $elementClass),
+                fn (mixed $item): mixed => $this->objectFactory->create($this->requireObjectData($item), $elementClass),
                 $value
             );
         }
@@ -77,10 +85,31 @@ class Caster
                 return $value;
             }
 
-            return $this->objectFactory->create($value, $to);
+            return $this->objectFactory->create($this->requireObjectData($value), $to);
         }
 
         return $value;
+    }
+
+    /** @return array<string, mixed>|string|null */
+    private function requireObjectData(mixed $value): array|string|null
+    {
+        if ($value === null || is_string($value)) {
+            return $value;
+        }
+        if (!is_array($value)) {
+            throw InvalidParameterTypeException::forParameter('value', 'array<string, mixed>|string|null');
+        }
+
+        $data = [];
+        foreach ($value as $key => $item) {
+            if (!is_string($key)) {
+                throw InvalidParameterTypeException::forParameter('value', 'array<string, mixed>|string|null');
+            }
+            $data[$key] = $item;
+        }
+
+        return $data;
     }
 
     /**

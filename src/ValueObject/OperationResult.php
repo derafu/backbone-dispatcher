@@ -130,7 +130,7 @@ class OperationResult implements OperationResultInterface
     }
 
     /**
-     * {@inheritDoc}
+     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null, metadata: ExecutionMetadataInterface, dataType: string|null}
      */
     public function jsonSerialize(): array
     {

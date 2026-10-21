@@ -22,6 +22,8 @@ use JsonSerializable;
  * Assumes Linux/macOS: built on `getrusage()` and `sys_getloadavg()`,
  * neither of which exists on Windows. No Windows support is offered.
  *
+ * Unavailable CPU, process ID and load readings are represented by null.
+ *
  * Construction (`since()`) is intentionally NOT part of this interface:
  * it's a named-constructor concern of the concrete `ExecutionMetadata`, not
  * part of the contract callers consume.
@@ -60,16 +62,16 @@ interface ExecutionMetadataInterface extends JsonSerializable
     public function getRealTime(): float;
 
     /**
-     * @return float CPU seconds spent in user-mode code — the "user" of
+     * @return float|null CPU seconds spent in user-mode code — the "user" of
      * `time`. From `getrusage()`.
      */
-    public function getUserTime(): float;
+    public function getUserTime(): ?float;
 
     /**
-     * @return float CPU seconds spent in kernel-mode code (syscalls,
+     * @return float|null CPU seconds spent in kernel-mode code (syscalls,
      * memory management) — the "sys" of `time`. From `getrusage()`.
      */
-    public function getSystemTime(): float;
+    public function getSystemTime(): ?float;
 
     /**
      * @return int Bytes allocated during this execution:
@@ -88,29 +90,34 @@ interface ExecutionMetadataInterface extends JsonSerializable
     public function getPeakMemory(): int;
 
     /**
-     * @return int The PID of the process that ran this.
+     * @return int|null The PID of the process that ran this.
      */
-    public function getPid(): int;
+    public function getPid(): ?int;
 
     /**
-     * @return float The system's 1-minute load average.
+     * @return float|null The system's 1-minute load average.
      */
-    public function getLoadAverage1Min(): float;
+    public function getLoadAverage1Min(): ?float;
 
     /**
-     * @return float The system's 5-minute load average.
+     * @return float|null The system's 5-minute load average.
      */
-    public function getLoadAverage5Min(): float;
+    public function getLoadAverage5Min(): ?float;
 
     /**
-     * @return float The system's 15-minute load average.
+     * @return float|null The system's 15-minute load average.
      */
-    public function getLoadAverage15Min(): float;
+    public function getLoadAverage15Min(): ?float;
 
     /**
      * Converts the execution metadata to an array.
      *
-     * @return array
+     * @return array{
+     *     startedAt: string, finishedAt: string, timestamp: float,
+     *     realTime: float, userTime: float|null, systemTime: float|null,
+     *     memoryUsed: int, peakMemory: int, pid: int|null,
+     *     loadAverage1Min: float|null, loadAverage5Min: float|null, loadAverage15Min: float|null
+     * }
      */
     public function toArray(): array;
 }

@@ -15,9 +15,11 @@ namespace Derafu\BackboneDispatcher\Abstract;
 use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\MissingOptionalDependencyException;
 use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
+use Derafu\Translation\Exception\Logic\TranslatableInvalidArgumentException as InvalidArgumentException;
 use Opis\JsonSchema\Errors\ErrorFormatter;
 use Opis\JsonSchema\Helper;
 use Opis\JsonSchema\Validator;
+use stdClass;
 
 /**
  * Base class for a `DeserializerInterface` that only ever accepts array
@@ -130,13 +132,18 @@ abstract class AbstractDeserializer implements DeserializerInterface
             );
         }
 
+        $jsonSchema = Helper::toJSON($schema);
+        if (!$jsonSchema instanceof stdClass) {
+            throw new InvalidArgumentException('The JSON schema must be an object.');
+        }
+
         $validator = new Validator(max_errors: 20, stop_at_first_error: false);
+        $result = $validator->validate(Helper::toJSON($data), $jsonSchema);
+        $error = $result->error();
 
-        $result = $validator->validate(Helper::toJSON($data), Helper::toJSON($schema));
-
-        if ($result->hasError()) {
+        if ($error !== null) {
             $messages = [];
-            foreach ((new ErrorFormatter())->format($result->error()) as $pointer => $pointerMessages) {
+            foreach ((new ErrorFormatter())->format($error) as $pointer => $pointerMessages) {
                 foreach ($pointerMessages as $message) {
                     $messages[] = $pointer === '' ? $message : "{$pointer}: {$message}";
                 }
@@ -153,7 +160,7 @@ abstract class AbstractDeserializer implements DeserializerInterface
      * `$requiredKeys` names that is missing from `$data`, walking into
      * nested key requirements as it goes.
      *
-     * @param array<string, mixed> $data
+     * @param array<array-key, mixed> $data
      * @param array<int|string, mixed> $requiredKeys
      * @param string $prefix The dot-separated path to `$data` itself,
      * empty at the top level.
@@ -170,6 +177,13 @@ abstract class AbstractDeserializer implements DeserializerInterface
             // Flat entry (`['tipo', 'caratula']`): the value is itself the
             // required key name, with no nested requirements of its own.
             if (is_int($key)) {
+                if (!is_int($value) && !is_string($value)) {
+                    throw new InvalidArgumentException([
+                        'Invalid required keys specification: expected {expected}; {type} given.',
+                        'expected' => 'int|string',
+                        'type' => get_debug_type($value),
+                    ]);
+                }
                 $path = $prefix === '' ? (string) $value : "{$prefix}.{$value}";
 
                 if (!array_key_exists($value, $data)) {
@@ -182,6 +196,13 @@ abstract class AbstractDeserializer implements DeserializerInterface
             // Nested entry (`['certificate' => ['data', 'password']]`):
             // the key itself is required, and its value is required to be
             // an array containing everything $value requires in turn.
+            if (!is_array($value)) {
+                throw new InvalidArgumentException([
+                    'Invalid required keys specification: expected {expected}; {type} given.',
+                    'expected' => 'array',
+                    'type' => get_debug_type($value),
+                ]);
+            }
             $path = $prefix === '' ? $key : "{$prefix}.{$key}";
 
             if (!array_key_exists($key, $data) || !is_array($data[$key])) {

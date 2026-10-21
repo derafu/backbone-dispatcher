@@ -15,6 +15,7 @@ namespace Derafu\BackboneDispatcher\Service\Reflection;
 use Derafu\BackboneDispatcher\Contract\InspectorInterface;
 use Derafu\Cache\CacheKey;
 use Derafu\Cache\Contract\CacheKeyInterface;
+use Derafu\Translation\Exception\Core\TranslatableLogicException as LogicException;
 use Psr\Cache\CacheItemPoolInterface;
 
 /**
@@ -63,7 +64,8 @@ class CachedInspector implements InspectorInterface
     {
         return $this->remember(
             $this->cacheKey->build('backbone_dispatcher.class_doc', $service::class),
-            fn () => $this->inspector->getClassDoc($service)
+            fn () => $this->inspector->getClassDoc($service),
+            $this->validateClassDoc(...)
         );
     }
 
@@ -98,7 +100,8 @@ class CachedInspector implements InspectorInterface
     {
         return $this->remember(
             $this->cacheKey->build('backbone_dispatcher.public_methods', $service::class),
-            fn () => $this->inspector->getPublicMethods($service)
+            fn () => $this->inspector->getPublicMethods($service),
+            $this->validatePublicMethods(...)
         );
     }
 
@@ -106,11 +109,13 @@ class CachedInspector implements InspectorInterface
      * Returns the cached value for `$key`, computing and storing it first
      * on a miss. Bypasses the cache pool entirely when `$ttl <= 0`.
      *
+     * @template T of array<array-key, mixed>
      * @param string $key
-     * @param callable $compute
-     * @return array
+     * @param callable(): T $compute
+     * @param callable(array<array-key, mixed>): T $validate
+     * @return T
      */
-    private function remember(string $key, callable $compute): array
+    private function remember(string $key, callable $compute, callable $validate): array
     {
         if ($this->ttl <= 0) {
             return $compute();
@@ -119,7 +124,12 @@ class CachedInspector implements InspectorInterface
         $item = $this->cache->getItem($key);
 
         if ($item->isHit()) {
-            return $item->get();
+            $value = $item->get();
+            if (!is_array($value)) {
+                throw new LogicException('Cached inspector data must be an array.');
+            }
+
+            return $validate($value);
         }
 
         $value = $compute();
@@ -129,5 +139,186 @@ class CachedInspector implements InspectorInterface
         $this->cache->save($item);
 
         return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return array{
+     *     name: class-string, summary: string|null, description: string|null,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>
+     * }
+     */
+    private function validateClassDoc(array $value): array
+    {
+        $value = $this->validateDocumentation($value);
+        $name = $value['name'];
+        if (!class_exists($name) && !interface_exists($name) && !trait_exists($name)) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+        $value['name'] = $name;
+
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return array<string, array{
+     *     name: string, summary: string|null, description: string|null,
+     *     parameters: list<array{name: string, type: string, required: bool, default: mixed, description: string|null, example?: mixed}>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     * }>
+     */
+    private function validatePublicMethods(array $value): array
+    {
+        $methods = [];
+        foreach ($value as $name => $method) {
+            if (!is_string($name) || !is_array($method)) {
+                throw new LogicException('Cached inspector data has an invalid structure.');
+            }
+            $method = array_replace($method, $this->validateDocumentation($method));
+            $method['parameters'] = $this->validateParameters($this->requireArray($method, 'parameters'));
+            $method['returns'] = $this->validateTypeDescription($this->requireArray($method, 'returns'));
+            $throws = [];
+            foreach ($this->requireArray($method, 'throws') as $key => $throw) {
+                if (!is_array($throw)) {
+                    throw new LogicException('Cached inspector data has an invalid structure.');
+                }
+                $throws[$key] = $this->validateTypeDescription($throw);
+            }
+            $method['throws'] = $throws;
+            if (!isset($method['deprecated']) || !is_bool($method['deprecated']) || !array_key_exists('operation', $method)) {
+                throw new LogicException('Cached inspector data has an invalid structure.');
+            }
+            if ($method['operation'] !== null) {
+                $operation = $this->requireArray($method, 'operation');
+                $operation['name'] = $this->requireNullableString($operation, 'name');
+                $operation['description'] = $this->requireNullableString($operation, 'description');
+                $operation['parameters'] = $this->requireArray($operation, 'parameters');
+                $operation['results'] = $this->requireArray($operation, 'results');
+                $method['operation'] = $operation;
+            }
+            $methods[$name] = $method;
+        }
+
+        return $methods;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return array{
+     *     name: string, summary: string|null, description: string|null,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>
+     * }
+     */
+    private function validateDocumentation(array $value): array
+    {
+        if (!isset($value['name']) || !is_string($value['name'])) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+        $value['summary'] = $this->requireNullableString($value, 'summary');
+        $value['description'] = $this->requireNullableString($value, 'description');
+        $tags = [];
+        foreach ($this->requireArray($value, 'tags') as $name => $entries) {
+            if (!is_string($name) || !is_array($entries) || !array_is_list($entries)) {
+                throw new LogicException('Cached inspector data has an invalid structure.');
+            }
+            $strings = [];
+            foreach ($entries as $entry) {
+                if (!is_string($entry)) {
+                    throw new LogicException('Cached inspector data has an invalid structure.');
+                }
+                $strings[] = $entry;
+            }
+            $tags[$name] = $strings;
+        }
+        $value['tags'] = $tags;
+        $links = $this->requireArray($value, 'links');
+        if (!array_is_list($links)) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+        $validatedLinks = [];
+        foreach ($links as $link) {
+            if (!is_array($link) || !isset($link['url']) || !is_string($link['url'])) {
+                throw new LogicException('Cached inspector data has an invalid structure.');
+            }
+            $link['description'] = $this->requireNullableString($link, 'description');
+            $validatedLinks[] = $link;
+        }
+        $value['links'] = $validatedLinks;
+
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return list<array{name: string, type: string, required: bool, default: mixed, description: string|null, example?: mixed}>
+     */
+    private function validateParameters(array $value): array
+    {
+        if (!array_is_list($value)) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+        $parameters = [];
+        foreach ($value as $parameter) {
+            if (!is_array($parameter)
+                || !isset($parameter['name'], $parameter['type'], $parameter['required'])
+                || !is_string($parameter['name'])
+                || !is_string($parameter['type'])
+                || !is_bool($parameter['required'])
+                || !array_key_exists('default', $parameter)
+            ) {
+                throw new LogicException('Cached inspector data has an invalid structure.');
+            }
+            $parameter['description'] = $this->requireNullableString($parameter, 'description');
+            $parameters[] = $parameter;
+        }
+
+        return $parameters;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @return array{type: string, description: string|null}
+     */
+    private function validateTypeDescription(array $value): array
+    {
+        if (!isset($value['type']) || !is_string($value['type'])) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+        $value['description'] = $this->requireNullableString($value, 'description');
+
+        return $value;
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @param string $key
+     * @return array<array-key, mixed>
+     */
+    private function requireArray(array $value, string $key): array
+    {
+        if (!isset($value[$key]) || !is_array($value[$key])) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+
+        return $value[$key];
+    }
+
+    /**
+     * @param array<array-key, mixed> $value
+     * @param string $key
+     * @return string|null
+     */
+    private function requireNullableString(array $value, string $key): ?string
+    {
+        if (!array_key_exists($key, $value) || ($value[$key] !== null && !is_string($value[$key]))) {
+            throw new LogicException('Cached inspector data has an invalid structure.');
+        }
+
+        return $value[$key];
     }
 }

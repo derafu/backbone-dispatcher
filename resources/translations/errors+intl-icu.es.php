@@ -11,6 +11,18 @@ declare(strict_types=1);
  */
 
 return [
+    'Cached inspector data has an invalid structure.' =>
+        'Los datos del inspector en caché tienen una estructura inválida.',
+    'The JSON schema must be an object.' =>
+        'El esquema JSON debe ser un objeto.',
+    'Invalid required keys specification: expected {expected}; {type} given.' =>
+        'Especificación de claves obligatorias inválida: se esperaba {expected}; se recibió {type}.',
+    'Invalid parameter override {name}: expected {expected}; {type} given.' =>
+        'Sobrescritura del parámetro {name} inválida: se esperaba {expected}; se recibió {type}.',
+    'A successful operation result must specify its data type.' =>
+        'El resultado de una operación exitosa debe especificar su tipo de dato.',
+    'Cached inspector data must be an array.' =>
+        'Los datos del inspector en caché deben ser un arreglo.',
     'Class {class} does not exist.' =>
         'La clase {class} no existe.',
     'Method {class}::fromArray() does not exist.' =>

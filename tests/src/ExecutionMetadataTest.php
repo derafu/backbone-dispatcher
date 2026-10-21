@@ -13,18 +13,26 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
+use Derafu\TestsBackboneDispatcher\Fixture\SystemMetricFailures;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\PreserveGlobalState;
+use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ExecutionMetadata::class)]
 class ExecutionMetadataTest extends TestCase
 {
     /**
-     * @return array{0: string, 1: int, 2: int, 3: array}
+     * @return array{string, int, int, array<string, int>}
      */
     private function startMeasuring(): array
     {
-        return [date(DATE_ATOM), hrtime(true), memory_get_usage(true), getrusage()];
+        $monotonicStart = hrtime(true);
+        $this->assertIsInt($monotonicStart);
+        $cpuUsage = getrusage();
+        $this->assertIsArray($cpuUsage);
+
+        return [date(DATE_ATOM), $monotonicStart, memory_get_usage(true), $cpuUsage];
     }
 
     public function testKeepsTheGivenStartedAtAndComputesAFinishedAt(): void
@@ -125,5 +133,51 @@ class ExecutionMetadataTest extends TestCase
             ],
             array_keys($metadata->toArray())
         );
+    }
+
+    public function testMissingStartingCpuReadingLeavesOtherMetricsAvailable(): void
+    {
+        [$startedAt, $monotonicStart, $startMemory] = $this->startMeasuring();
+
+        $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, null);
+
+        $this->assertNull($metadata->getUserTime());
+        $this->assertNull($metadata->getSystemTime());
+        $this->assertSame(getmypid(), $metadata->getPid());
+        $this->assertNotNull($metadata->getLoadAverage1Min());
+        $this->assertNotNull($metadata->getLoadAverage5Min());
+        $this->assertNotNull($metadata->getLoadAverage15Min());
+        $this->assertGreaterThanOrEqual(0.0, $metadata->getRealTime());
+        $this->assertGreaterThan(0, $metadata->getPeakMemory());
+        $this->assertNull($metadata->toArray()['userTime']);
+        $this->assertNull($metadata->jsonSerialize()['systemTime']);
+    }
+
+    #[RunInSeparateProcess]
+    #[PreserveGlobalState(false)]
+    public function testFailedFinalReadingsRemainNullInGettersAndJson(): void
+    {
+        [$startedAt, $monotonicStart, $startMemory, $startCpuUsage] = $this->startMeasuring();
+        require __DIR__ . '/Fixture/SystemMetricFailures.php';
+        SystemMetricFailures::$cpu = true;
+        SystemMetricFailures::$pid = true;
+        SystemMetricFailures::$load = true;
+
+        $metadata = ExecutionMetadata::since($startedAt, $monotonicStart, $startMemory, $startCpuUsage);
+
+        $this->assertNull($metadata->getUserTime());
+        $this->assertNull($metadata->getSystemTime());
+        $this->assertNull($metadata->getPid());
+        $this->assertNull($metadata->getLoadAverage1Min());
+        $this->assertNull($metadata->getLoadAverage5Min());
+        $this->assertNull($metadata->getLoadAverage15Min());
+        $this->assertGreaterThanOrEqual(0.0, $metadata->getRealTime());
+        $this->assertSame($startedAt, $metadata->getStartedAt());
+        $this->assertGreaterThan(0, $metadata->getPeakMemory());
+        $this->assertSame($metadata->toArray(), $metadata->jsonSerialize());
+        $json = json_encode($metadata, JSON_THROW_ON_ERROR);
+        foreach (['userTime', 'systemTime', 'pid', 'loadAverage1Min', 'loadAverage5Min', 'loadAverage15Min'] as $key) {
+            $this->assertStringContainsString('"' . $key . '":null', $json);
+        }
     }
 }

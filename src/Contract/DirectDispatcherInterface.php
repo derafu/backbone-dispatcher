@@ -41,7 +41,7 @@ interface DirectDispatcherInterface
      * @param string $component
      * @param string $worker
      * @param string $operation
-     * @param array $parameters
+     * @param array<string, mixed> $parameters
      * @return mixed
      */
     public function dispatch(

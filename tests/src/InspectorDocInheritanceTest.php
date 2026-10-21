@@ -19,6 +19,8 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleDocChildBracesMixedCase;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleDocChildInlineDescriptionWithOwnSummary;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleDocChildInlineSummaryWithOwnDescription;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleDocChildMixedWithProse;
+use Derafu\TestsBackboneDispatcher\Fixture\LiteralDocChild;
+use Derafu\TestsBackboneDispatcher\Fixture\LiteralDocParent;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -78,6 +80,7 @@ class InspectorDocInheritanceTest extends TestCase
         $doc = $this->inspector->getClassDoc(new $childClass());
 
         $this->assertSame('Real class summary of the parent.', $doc['summary']);
+        $this->assertIsString($doc['description']);
         $this->assertStringContainsString(
             'Real class description of the parent',
             $doc['description']
@@ -94,6 +97,7 @@ class InspectorDocInheritanceTest extends TestCase
             'Real method summary of the parent.',
             $methods['describe']['summary']
         );
+        $this->assertIsString($methods['describe']['description']);
         $this->assertStringContainsString(
             'Real method description of the parent',
             $methods['describe']['description']
@@ -114,6 +118,7 @@ class InspectorDocInheritanceTest extends TestCase
         );
 
         $this->assertSame('Pepe', $doc['summary']);
+        $this->assertIsString($doc['description']);
         $this->assertStringContainsString(
             'Real class description of the parent',
             $doc['description']
@@ -128,6 +133,7 @@ class InspectorDocInheritanceTest extends TestCase
         );
 
         $this->assertSame('Pepe', $methods['describe']['summary']);
+        $this->assertIsString($methods['describe']['description']);
         $this->assertStringContainsString(
             'Real method description of the parent',
             $methods['describe']['description']
@@ -164,5 +170,24 @@ class InspectorDocInheritanceTest extends TestCase
             'Own summary, not inherited. Real class summary of the parent.',
             $doc['summary']
         );
+    }
+
+    public function testInlineInheritancePreservesLiteralReplacementTextAndReplacesEveryOccurrence(): void
+    {
+        $parent = new LiteralDocParent();
+        $child = new LiteralDocChild();
+        $parentDoc = $this->inspector->getClassDoc($parent);
+        $childDoc = $this->inspector->getClassDoc($child);
+        $parentMethod = $this->inspector->getPublicMethods($parent)['describe'];
+        $childMethod = $this->inspector->getPublicMethods($child)['describe'];
+
+        $this->assertSame('Before ' . $parentDoc['summary'] . ' after ' . $parentDoc['summary'], $childDoc['summary']);
+        $this->assertSame('Start ' . $parentDoc['description'] . ' end.', $childDoc['description']);
+        $this->assertSame('Before ' . $parentMethod['summary'] . ' after ' . $parentMethod['summary'], $childMethod['summary']);
+        $this->assertSame('Start ' . $parentMethod['description'] . ' end.', $childMethod['description']);
+        $this->assertStringContainsString('$1', $childDoc['summary']);
+        $this->assertStringContainsString('\\path', $childDoc['summary']);
+        $this->assertStringContainsString('$0', $childDoc['description']);
+        $this->assertStringContainsString('\\directory', $childDoc['description']);
     }
 }

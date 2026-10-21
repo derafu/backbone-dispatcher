@@ -29,7 +29,10 @@ interface InspectorInterface
      * Gets the documentation of a class.
      *
      * @param object $service
-     * @return array
+     * @return array{
+     *     name: class-string, summary: string|null, description: string|null,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>
+     * }
      */
     public function getClassDoc(object $service): array;
 
@@ -64,7 +67,7 @@ interface InspectorInterface
      *
      * @param object $service
      * @param string $method
-     * @return array
+     * @return list<array{name: string, type: string, required: bool, default: mixed, description: string|null}>
      */
     public function getOperationParameters(object $service, string $method): array;
 
@@ -77,7 +80,15 @@ interface InspectorInterface
      * `Explorer`), never by `Inspector` itself.
      *
      * @param object $service
-     * @return array
+     * @return array<string, array{
+     *     name: string, summary: string|null, description: string|null,
+     *     parameters: list<array{name: string, type: string, required: bool, default: mixed, description: string|null, example?: mixed}>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     * }>
      */
     public function getPublicMethods(object $service): array;
 }

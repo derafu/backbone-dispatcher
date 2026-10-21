@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher\Fixture;
 
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
+use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
 
 /**
  * A deliberately distinguishable deserializer for `ExampleBag`: it marks
@@ -29,6 +30,9 @@ class ExampleBagDeserializer extends AbstractDeserializer
     public function deserialize(array|string $data, string $class): object
     {
         $data = $this->assertArray($data);
+        if (!isset($data['name'], $data['amount']) || !is_string($data['name']) || !is_int($data['amount'])) {
+            throw UnsupportedDataTypeException::forDeserializer(static::class, 'array{name: string, amount: int}');
+        }
 
         return ExampleBag::fromArray([
             'name' => $data['name'] . ' (via registry)',

@@ -133,6 +133,7 @@ class ResolverTest extends TestCase
             ],
         ]);
 
+        $this->assertIsArray($args['bags']);
         $this->assertInstanceOf(ExampleBag::class, $args['bags'][0]);
         $this->assertSame('folios', $args['bags'][0]->getName());
         $this->assertSame(4, $args['bags'][0]->getAmount());

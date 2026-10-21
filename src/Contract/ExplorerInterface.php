@@ -21,7 +21,7 @@ interface ExplorerInterface
     /**
      * Returns the list of packages of the application.
      *
-     * @return array
+     * @return list<array<string, mixed>>
      */
     public function getPackages(): array;
 
@@ -29,7 +29,7 @@ interface ExplorerInterface
      * Returns the list of components of a package.
      *
      * @param string $package
-     * @return array
+     * @return list<array<string, mixed>>
      */
     public function getComponents(string $package): array;
 
@@ -38,7 +38,7 @@ interface ExplorerInterface
      *
      * @param string $package
      * @param string $component
-     * @return array
+     * @return list<array<string, mixed>>
      */
     public function getWorkers(string $package, string $component): array;
 
@@ -48,7 +48,7 @@ interface ExplorerInterface
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @return array
+     * @return list<array<string, mixed>>
      */
     public function getOperations(
         string $package,
@@ -61,7 +61,7 @@ interface ExplorerInterface
      *
      * @param string $package
      * @param boolean $withComponents
-     * @return array
+     * @return array<string, mixed>
      */
     public function getPackage(
         string $package,
@@ -74,7 +74,7 @@ interface ExplorerInterface
      * @param string $package
      * @param string $component
      * @param boolean $withWorkers
-     * @return array
+     * @return array<string, mixed>
      */
     public function getComponent(
         string $package,
@@ -89,7 +89,7 @@ interface ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param boolean $withOperations
-     * @return array
+     * @return array<string, mixed>
      */
     public function getWorker(
         string $package,
@@ -105,7 +105,7 @@ interface ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param string $operation
-     * @return array
+     * @return array<string, mixed>
      */
     public function getOperation(
         string $package,
@@ -130,7 +130,7 @@ interface ExplorerInterface
      * `summary`/`description` alongside its children.
      *
      * @param string|null $id
-     * @return array
+     * @return array<string, mixed>
      */
     public function describe(?string $id = null): array;
 
@@ -148,7 +148,7 @@ interface ExplorerInterface
      * `describe(null)`'s `packages` holds.
      *
      * @param string|null $id
-     * @return array
+     * @return array<string, mixed>
      */
     public function tree(?string $id = null): array;
 }

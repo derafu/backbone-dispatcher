@@ -25,6 +25,7 @@ class ExampleBag
     ) {
     }
 
+    /** @param array{name: string, amount: int} $data */
     public static function fromArray(array $data): self
     {
         return new self(
@@ -43,6 +44,7 @@ class ExampleBag
         return $this->amount;
     }
 
+    /** @return array{name: string, amount: int} */
     public function toArray(): array
     {
         return [

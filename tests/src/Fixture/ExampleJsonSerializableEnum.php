@@ -22,6 +22,7 @@ enum ExampleJsonSerializableEnum: string implements JsonSerializable
 {
     case Active = 'active';
 
+    /** @return array{label: string} */
     public function jsonSerialize(): array
     {
         return ['label' => 'Custom label'];

@@ -28,21 +28,36 @@ class ExampleShapeAssertingDeserializer extends AbstractDeserializer
         throw new LogicException('Not used by AbstractDeserializerTest.');
     }
 
+    /**
+     * @param array<string, mixed>|string $data
+     * @return array<string, mixed>
+     */
     public function callAssertArray(array|string $data): array
     {
         return $this->assertArray($data);
     }
 
+    /** @param array<string, mixed>|string $data */
     public function callAssertString(array|string $data): string
     {
         return $this->assertString($data);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @param array<array-key, mixed> $requiredKeys
+     * @return array<string, mixed>
+     */
     public function callAssertKeys(array $data, array $requiredKeys): array
     {
         return $this->assertKeys($data, $requiredKeys);
     }
 
+    /**
+     * @param array<string, mixed> $data
+     * @param array<string, mixed> $schema
+     * @return array<string, mixed>
+     */
     public function callAssertSchema(array $data, array $schema): array
     {
         return $this->assertSchema($data, $schema);

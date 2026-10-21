@@ -14,6 +14,7 @@ namespace Derafu\BackboneDispatcher\Service\Reflection;
 
 use Derafu\Backbone\Attribute\Operation;
 use Derafu\BackboneDispatcher\Contract\InspectorInterface;
+use Derafu\Translation\Exception\Logic\TranslatableInvalidArgumentException as InvalidArgumentException;
 use phpDocumentor\Reflection\DocBlock;
 use phpDocumentor\Reflection\DocBlock\Description;
 use phpDocumentor\Reflection\DocBlock\Tags\Param;
@@ -25,6 +26,7 @@ use phpDocumentor\Reflection\Types\AbstractList;
 use phpDocumentor\Reflection\Types\ContextFactory;
 use phpDocumentor\Reflection\Types\Object_;
 use ReflectionClass;
+use ReflectionIntersectionType;
 use ReflectionMethod;
 use ReflectionNamedType;
 use ReflectionType;
@@ -45,7 +47,10 @@ class Inspector implements InspectorInterface
      * Gets the documentation of a class.
      *
      * @param object $service
-     * @return array
+     * @return array{
+     *     name: class-string, summary: string|null, description: string|null,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>
+     * }
      */
     public function getClassDoc(object $service): array
     {
@@ -134,7 +139,7 @@ class Inspector implements InspectorInterface
      *
      * @param object $service
      * @param string $method
-     * @return array
+     * @return list<array{name: string, type: string, required: bool, default: mixed, description: string|null}>
      */
     public function getOperationParameters(object $service, string $method): array
     {
@@ -210,7 +215,15 @@ class Inspector implements InspectorInterface
      * `Explorer`), never by `Inspector` itself.
      *
      * @param object $service
-     * @return array
+     * @return array<string, array{
+     *     name: string, summary: string|null, description: string|null,
+     *     parameters: list<array{name: string, type: string, required: bool, default: mixed, description: string|null, example?: mixed}>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     * }>
      */
     public function getPublicMethods(object $service): array
     {
@@ -272,19 +285,24 @@ class Inspector implements InspectorInterface
 
     /**
      * Reflects `$service`'s class, unwrapping a lazy-loading proxy to its
-     * real (parent) class first — every other method in this class needs
-     * that same unwrapped `ReflectionClass`, never the proxy's own.
+     * real (parent) class first when one exists. A lazy object without a
+     * parent is inspected as its own class.
      *
      * @param object $service
-     * @return ReflectionClass
+     * @return ReflectionClass<object>
      */
     private function reflectClass(object $service): ReflectionClass
     {
         $reflection = new ReflectionClass($service);
 
-        return $service instanceof LazyObjectInterface
-            ? $reflection->getParentClass()
-            : $reflection;
+        if ($service instanceof LazyObjectInterface) {
+            $parent = $reflection->getParentClass();
+            if ($parent !== false) {
+                return $parent;
+            }
+        }
+
+        return $reflection;
     }
 
     /**
@@ -301,7 +319,7 @@ class Inspector implements InspectorInterface
      * an operation. See `isOperation()`'s docblock for why this method
      * must stay a purely factual existence check.
      *
-     * @param ReflectionClass $reflection
+     * @param ReflectionClass<object> $reflection
      * @param string $method
      * @return bool
      */
@@ -441,10 +459,8 @@ class Inspector implements InspectorInterface
      * Replaces every `{@inheritDoc}` occurrence (any casing) in `$text`
      * with `$replacement`, verbatim.
      *
-     * Uses a callback replacement (not a plain string one) specifically so
-     * `$replacement` is never interpreted as a backreference pattern (e.g.
-     * a parent docblock that itself mentions a `$variable`, which a plain
-     * `preg_replace()` string replacement would otherwise try to expand).
+     * Uses a literal, case-insensitive replacement so `$replacement` is
+     * never interpreted as a regular-expression backreference pattern.
      *
      * @param string $text
      * @param string $replacement
@@ -452,11 +468,7 @@ class Inspector implements InspectorInterface
      */
     private function replaceInheritDocTag(string $text, string $replacement): string
     {
-        return preg_replace_callback(
-            '/\{@inheritdoc\}/i',
-            static fn (): string => $replacement,
-            $text
-        );
+        return str_ireplace('{@inheritdoc}', $replacement, $text);
     }
 
     /**
@@ -514,7 +526,7 @@ class Inspector implements InspectorInterface
 
         $description = null;
         if ($returnTag instanceof Return_) {
-            $description = $returnTag->getDescription()->render() ?: null;
+            $description = $returnTag->getDescription()?->render() ?: null;
         }
 
         return [
@@ -549,7 +561,7 @@ class Inspector implements InspectorInterface
 
             $throws[] = [
                 'type' => ltrim((string) $tag->getType(), '\\'),
-                'description' => $tag->getDescription()->render() ?: null,
+                'description' => $tag->getDescription()?->render() ?: null,
             ];
         }
 
@@ -558,20 +570,15 @@ class Inspector implements InspectorInterface
 
     /**
      * Resolves a reflected type (a parameter's or a return type's) to its
-     * string representation, handling union types the same way for both.
+     * string representation, preserving unions and intersections for both.
      *
      * @param ReflectionType|null $type
      * @return string
      */
     private function resolveTypeName(?ReflectionType $type): string
     {
-        if ($type instanceof ReflectionUnionType) {
-            $types = [];
-            foreach ($type->getTypes() as $unionType) {
-                $types[] = $unionType->getName();
-            }
-
-            return implode('|', $types);
+        if ($type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType) {
+            return (string) $type;
         }
 
         if ($type instanceof ReflectionNamedType) {
@@ -586,7 +593,7 @@ class Inspector implements InspectorInterface
      *
      * @param ReflectionMethod $method
      * @param DocBlock|null $docBlock
-     * @return array
+     * @return list<array{name: string, type: string, required: bool, default: mixed, description: string|null}>
      */
     private function getParameters(
         ReflectionMethod $method,
@@ -622,7 +629,7 @@ class Inspector implements InspectorInterface
                     ? $parameter->getDefaultValue()
                     : null
                 ,
-                'description' => $docParam?->getDescription()->render(),
+                'description' => $docParam?->getDescription()?->render(),
             ];
 
             $parametersInfo[] = $paramInfo;
@@ -681,9 +688,9 @@ class Inspector implements InspectorInterface
      * `'example'` is never something reflection can produce, so it is
      * only ever present here when the attribute provides it.
      *
-     * @param array $parameters
-     * @param array $overrides
-     * @return array
+     * @param list<array{name: string, type: string, required: bool, default: mixed, description: string|null}> $parameters
+     * @param array<array-key, mixed> $overrides
+     * @return list<array{name: string, type: string, required: bool, default: mixed, description: string|null, example?: mixed}>
      */
     private function applyParameterOverrides(array $parameters, array $overrides): array
     {
@@ -694,11 +701,36 @@ class Inspector implements InspectorInterface
                 continue;
             }
 
+            if (!is_array($override)) {
+                throw new InvalidArgumentException([
+                    'Invalid parameter override {name}: expected {expected}; {type} given.',
+                    'name' => $parameter['name'],
+                    'expected' => 'array',
+                    'type' => get_debug_type($override),
+                ]);
+            }
+
             if (array_key_exists('type', $override)) {
+                if (!is_string($override['type'])) {
+                    throw new InvalidArgumentException([
+                        'Invalid parameter override {name}: expected {expected}; {type} given.',
+                        'name' => $parameter['name'] . '.type',
+                        'expected' => 'string',
+                        'type' => get_debug_type($override['type']),
+                    ]);
+                }
                 $parameter['type'] = $override['type'];
             }
 
             if (array_key_exists('description', $override)) {
+                if ($override['description'] !== null && !is_string($override['description'])) {
+                    throw new InvalidArgumentException([
+                        'Invalid parameter override {name}: expected {expected}; {type} given.',
+                        'name' => $parameter['name'] . '.description',
+                        'expected' => 'string|null',
+                        'type' => get_debug_type($override['description']),
+                    ]);
+                }
                 $parameter['description'] = $override['description'];
             }
 
@@ -763,7 +795,7 @@ class Inspector implements InspectorInterface
     /**
      * Resolves the inherited documentation of a parent class.
      *
-     * @param ReflectionClass $reflection
+     * @param ReflectionClass<object> $reflection
      * @param DocBlockFactoryInterface $docBlockFactory
      * @return DocBlock|null
      */
@@ -795,7 +827,7 @@ class Inspector implements InspectorInterface
      * Gets the tags from a class DocBlock.
      *
      * @param DocBlock|null $docBlock
-     * @return array
+     * @return array<string, list<string>>
      */
     private function getDocBlockTags(?DocBlock $docBlock): array
     {
@@ -826,7 +858,7 @@ class Inspector implements InspectorInterface
      * Gets the links from a class DocBlock.
      *
      * @param DocBlock|null $docBlock
-     * @return array
+     * @return list<array{url: string, description: string|null}>
      */
     private function getDocBlockLinks(?DocBlock $docBlock): array
     {

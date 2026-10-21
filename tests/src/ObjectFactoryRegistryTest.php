@@ -14,6 +14,7 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
 use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
+use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
 use Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException;
 use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
 use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
@@ -24,11 +25,13 @@ use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreetingDeserializer;
 use LogicException;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ObjectFactoryRegistry::class)]
 #[UsesClass(FromArrayDeserializer::class)]
+#[UsesClass(FromArrayMethodNotFoundException::class)]
 #[UsesClass(NoDeserializerFoundException::class)]
 #[UsesClass(UnsupportedDataTypeException::class)]
 class ObjectFactoryRegistryTest extends TestCase
@@ -234,6 +237,9 @@ class ObjectFactoryRegistryTest extends TestCase
             public function deserialize(array|string $data, string $class): object
             {
                 $data = $this->assertKeys($this->assertArray($data), ['name']);
+                if (!is_string($data['name'])) {
+                    throw UnsupportedDataTypeException::forDeserializer(static::class, 'array{name: string}');
+                }
 
                 return ExampleBag::fromArray(['name' => $data['name'], 'amount' => 0]);
             }
@@ -243,6 +249,9 @@ class ObjectFactoryRegistryTest extends TestCase
             public function deserialize(array|string $data, string $class): object
             {
                 $data = $this->assertKeys($this->assertArray($data), ['code']);
+                if (!is_string($data['code'])) {
+                    throw UnsupportedDataTypeException::forDeserializer(static::class, 'array{code: string}');
+                }
 
                 return new ExampleGreeting($data['code']);
             }
@@ -296,5 +305,52 @@ class ObjectFactoryRegistryTest extends TestCase
             ['name' => 'folios', 'amount' => 3],
             ExampleBag::class . '|' . ExampleGreeting::class,
         );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function invalidBagFields(): array
+    {
+        return [
+            'missing fields' => [[]],
+            'missing amount' => [['name' => 'folios']],
+            'integer instead of name' => [['name' => 7, 'amount' => 2]],
+            'string instead of amount' => [['name' => 'folios', 'amount' => '2']],
+            'null name' => [['name' => null, 'amount' => 2]],
+        ];
+    }
+
+    /** @param array<string, mixed> $data */
+    #[DataProvider('invalidBagFields')]
+    public function testARegisteredDeserializerRejectsIncompatibleFieldTypes(array $data): void
+    {
+        $registry = new ObjectFactoryRegistry([ExampleBag::class => new ExampleBagDeserializer()]);
+
+        try {
+            $registry->create($data, ExampleBag::class);
+            $this->fail('Incompatible fields must be rejected before constructing the value object.');
+        } catch (NoDeserializerFoundException $exception) {
+            $this->assertStringContainsString('array{name: string, amount: int}', $exception->getMessage());
+        }
+    }
+
+    public function testAStringSkipsTheArrayCandidateAndReachesItsRegisteredDeserializer(): void
+    {
+        $registry = new ObjectFactoryRegistry(deserializers: [ExampleGreeting::class => new ExampleGreetingDeserializer()]);
+
+        $value = $registry->create('Hello', 'array|' . ExampleGreeting::class);
+
+        $this->assertInstanceOf(ExampleGreeting::class, $value);
+        $this->assertSame('Hello', $value->getMessage());
+    }
+
+    public function testFallbackRejectionsDoNotPreventALaterCandidateFromBeingCreated(): void
+    {
+        $registry = new ObjectFactoryRegistry(fallback: new FromArrayDeserializer());
+
+        $value = $registry->create(['name' => 'example', 'amount' => 5], ExampleGreeting::class . '|' . ExampleBag::class);
+
+        $this->assertInstanceOf(ExampleBag::class, $value);
+        $this->assertSame('example', $value->getName());
+        $this->assertSame(5, $value->getAmount());
     }
 }

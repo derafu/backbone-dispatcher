@@ -60,7 +60,7 @@ class Serializer implements SerializerInterface
      * `name` for every enum, plus `value` when it is backed.
      *
      * @param UnitEnum $enum
-     * @return array
+     * @return array{name: string, value?: int|string}
      */
     private function serializeEnum(UnitEnum $enum): array
     {

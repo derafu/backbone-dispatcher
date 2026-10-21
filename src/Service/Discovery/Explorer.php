@@ -67,6 +67,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return list<array<string, mixed>>
      */
     public function getPackages(): array
     {
@@ -87,6 +89,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return list<array<string, mixed>>
      */
     public function getComponents(string $package): array
     {
@@ -111,6 +115,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return list<array<string, mixed>>
      */
     public function getWorkers(string $package, string $component): array
     {
@@ -136,6 +142,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return list<array<string, mixed>>
      */
     public function getOperations(
         string $package,
@@ -171,7 +179,7 @@ class Explorer implements ExplorerInterface
      *
      * @param string $package
      * @param boolean $withComponents
-     * @return array
+     * @return array<string, mixed>
      */
     public function getPackage(
         string $package,
@@ -200,7 +208,7 @@ class Explorer implements ExplorerInterface
      * @param string $package
      * @param string $component
      * @param boolean $withWorkers
-     * @return array
+     * @return array<string, mixed>
      */
     public function getComponent(
         string $package,
@@ -239,7 +247,7 @@ class Explorer implements ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param boolean $withOperations
-     * @return array
+     * @return array<string, mixed>
      */
     public function getWorker(
         string $package,
@@ -318,6 +326,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return array<string, mixed>
      */
     public function describe(?string $id = null): array
     {
@@ -347,6 +357,8 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
+     *
+     * @return array<string, mixed>
      */
     public function tree(?string $id = null): array
     {
@@ -422,7 +434,7 @@ class Explorer implements ExplorerInterface
      * own PHPDoc, so there is no reason for them to be missing here just
      * because the rest of the shape does not apply.
      *
-     * @return array
+     * @return array<string, mixed>
      */
     private function buildPackagesTree(): array
     {
@@ -453,7 +465,7 @@ class Explorer implements ExplorerInterface
      * workers and operations) nested underneath.
      *
      * @param string $package
-     * @return array
+     * @return array<string, mixed>
      */
     private function buildPackageTree(string $package): array
     {
@@ -486,7 +498,7 @@ class Explorer implements ExplorerInterface
      *
      * @param string $package
      * @param string $component
-     * @return array
+     * @return array<string, mixed>
      */
     private function buildComponentTree(string $package, string $component): array
     {
@@ -521,7 +533,7 @@ class Explorer implements ExplorerInterface
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @return array
+     * @return array<string, mixed>
      */
     private function buildWorkerTree(string $package, string $component, string $worker): array
     {
@@ -538,8 +550,8 @@ class Explorer implements ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param string $operation
-     * @param array $info
-     * @return array
+     * @param array<string, mixed> $info
+     * @return array<string, mixed>
      */
     private function buildOperation(
         string $package,

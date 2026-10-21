@@ -61,7 +61,7 @@ interface SafeThrowableInterface extends Stringable, JsonSerializable
     /**
      * Gets the stack trace.
      *
-     * @return array<int,mixed>
+     * @return array<int, array{file?: string, line?: int, function?: string, class?: string, type?: string, args?: array<array-key, mixed>, object?: object}>
      */
     public function getTrace(): array;
 
@@ -82,7 +82,10 @@ interface SafeThrowableInterface extends Stringable, JsonSerializable
     /**
      * Converts the safe throwable to an array.
      *
-     * @return array
+     * @return array{
+     *     class: string, code: int, message: string, file: string, line: int,
+     *     trace: array<int, array{file?: string, line?: int, function?: string, class?: string, type?: string, args?: array<array-key, mixed>, object?: object}>, previous: SafeThrowableInterface|null
+     * }
      */
     public function toArray(): array;
 }
