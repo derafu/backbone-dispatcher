@@ -360,18 +360,11 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $this->assertIsArray($tree['packages']);
-        $this->assertIsArray($tree['packages'][0]);
         $this->assertSame('example_package', $tree['packages'][0]['id']);
-        $this->assertIsArray($tree['packages'][0]['components']);
         $component = $tree['packages'][0]['components'][0];
-        $this->assertIsArray($component);
         $this->assertSame('example_package.example_component', $component['id']);
-        $this->assertIsArray($component['workers']);
         $worker = $component['workers'][0];
-        $this->assertIsArray($worker);
         $this->assertSame('example_package.example_component.example_worker', $worker['id']);
-        $this->assertIsArray($worker['operations']);
         $operationNames = array_column($worker['operations'], 'name');
         $this->assertContains('sum', $operationNames);
     }
@@ -451,14 +444,7 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $this->assertIsArray($tree['packages']);
-        $this->assertIsArray($tree['packages'][0]);
-        $this->assertIsArray($tree['packages'][0]['components']);
-        $this->assertIsArray($tree['packages'][0]['components'][0]);
-        $this->assertIsArray($tree['packages'][0]['components'][0]['workers']);
         $worker = $tree['packages'][0]['components'][0]['workers'][0];
-        $this->assertIsArray($worker);
-        $this->assertIsArray($worker['operations']);
         $this->assertSame(['sum'], array_column($worker['operations'], 'name'));
     }
 
@@ -538,20 +524,13 @@ class ExplorerTest extends TestCase
 
         $tree = $explorer->tree();
 
-        $this->assertIsArray($tree['packages']);
         $this->assertSame(['mixed_package'], array_column($tree['packages'], 'id'));
-        $this->assertIsArray($tree['packages'][0]);
 
         $components = $tree['packages'][0]['components'];
-        $this->assertIsArray($components);
         $this->assertSame(['mixed_package.mixed_component'], array_column($components, 'id'));
 
-        $this->assertIsArray($components[0]);
         $workers = $components[0]['workers'];
-        $this->assertIsArray($workers);
         $this->assertSame(['mixed_package.mixed_component.allowed_worker'], array_column($workers, 'id'));
-        $this->assertIsArray($workers[0]);
-        $this->assertIsArray($workers[0]['operations']);
         $this->assertSame(['sum'], array_column($workers[0]['operations'], 'name'));
     }
 

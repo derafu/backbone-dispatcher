@@ -21,7 +21,7 @@ interface ExplorerInterface
     /**
      * Returns the list of packages of the application.
      *
-     * @return list<array<string, mixed>>
+     * @return list<array{id: string, name: string, summary: string|null, description: string|null}>
      */
     public function getPackages(): array;
 
@@ -29,7 +29,7 @@ interface ExplorerInterface
      * Returns the list of components of a package.
      *
      * @param string $package
-     * @return list<array<string, mixed>>
+     * @return list<array{id: string, name: string, summary: string|null, description: string|null}>
      */
     public function getComponents(string $package): array;
 
@@ -38,7 +38,7 @@ interface ExplorerInterface
      *
      * @param string $package
      * @param string $component
-     * @return list<array<string, mixed>>
+     * @return list<array{id: string, name: string, summary: string|null, description: string|null}>
      */
     public function getWorkers(string $package, string $component): array;
 
@@ -48,7 +48,31 @@ interface ExplorerInterface
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @return list<array<string, mixed>>
+     * @return list<array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * }>
      */
     public function getOperations(
         string $package,
@@ -61,7 +85,13 @@ interface ExplorerInterface
      *
      * @param string $package
      * @param boolean $withComponents
-     * @return array<string, mixed>
+     * @return ($withComponents is true ? array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     components: list<array{id: string, name: string, summary: string|null, description: string|null}>,
+     * } : array{id: string, name: string, summary: string|null, description: string|null})
      */
     public function getPackage(
         string $package,
@@ -74,7 +104,13 @@ interface ExplorerInterface
      * @param string $package
      * @param string $component
      * @param boolean $withWorkers
-     * @return array<string, mixed>
+     * @return ($withWorkers is true ? array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     workers: list<array{id: string, name: string, summary: string|null, description: string|null}>,
+     * } : array{id: string, name: string, summary: string|null, description: string|null})
      */
     public function getComponent(
         string $package,
@@ -89,7 +125,37 @@ interface ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param boolean $withOperations
-     * @return array<string, mixed>
+     * @return ($withOperations is true ? array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     operations: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         parameters: list<array{
+     *             name: string,
+     *             type: string,
+     *             required: bool,
+     *             default: mixed,
+     *             description: string|null,
+     *             example?: mixed,
+     *         }>,
+     *         returns: array{type: string, description: string|null},
+     *         throws: array<array{type: string, description: string|null}>,
+     *         tags: array<string, list<string>>,
+     *         links: list<array{url: string, description: string|null}>,
+     *         deprecated: bool,
+     *         operation: array{
+     *             name: string|null,
+     *             description: string|null,
+     *             parameters: array<array-key, mixed>,
+     *             results: array<array-key, mixed>,
+     *         }|null,
+     *     }>,
+     * } : array{id: string, name: string, summary: string|null, description: string|null})
      */
     public function getWorker(
         string $package,
@@ -105,7 +171,31 @@ interface ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param string $operation
-     * @return array<string, mixed>
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * }
      */
     public function getOperation(
         string $package,
@@ -130,7 +220,35 @@ interface ExplorerInterface
      * `summary`/`description` alongside its children.
      *
      * @param string|null $id
-     * @return array<string, mixed>
+     * @return ($id is null|'' ? array{
+     *     summary: string|null,
+     *     description: string|null,
+     *     packages: list<array{id: string, name: string, summary: string|null, description: string|null}>,
+     * } : (array{id: string, name: string, summary: string|null, description: string|null}|array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * }))
      */
     public function describe(?string $id = null): array;
 
@@ -148,7 +266,185 @@ interface ExplorerInterface
      * `describe(null)`'s `packages` holds.
      *
      * @param string|null $id
-     * @return array<string, mixed>
+     * @return ($id is null|'' ? array{
+     *     summary: string|null,
+     *     description: string|null,
+     *     packages: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         components: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             workers: list<array{
+     *                 id: string,
+     *                 name: string,
+     *                 summary: string|null,
+     *                 description: string|null,
+     *                 operations: list<array{
+     *                     id: string,
+     *                     name: string,
+     *                     summary: string|null,
+     *                     description: string|null,
+     *                     parameters: list<array{
+     *                         name: string,
+     *                         type: string,
+     *                         required: bool,
+     *                         default: mixed,
+     *                         description: string|null,
+     *                         example?: mixed,
+     *                     }>,
+     *                     returns: array{type: string, description: string|null},
+     *                     throws: array<array{type: string, description: string|null}>,
+     *                     tags: array<string, list<string>>,
+     *                     links: list<array{url: string, description: string|null}>,
+     *                     deprecated: bool,
+     *                     operation: array{
+     *                         name: string|null,
+     *                         description: string|null,
+     *                         parameters: array<array-key, mixed>,
+     *                         results: array<array-key, mixed>,
+     *                     }|null,
+     *                 }>,
+     *             }>,
+     *         }>,
+     *     }>,
+     * } : (array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     components: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         workers: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             operations: list<array{
+     *                 id: string,
+     *                 name: string,
+     *                 summary: string|null,
+     *                 description: string|null,
+     *                 parameters: list<array{
+     *                     name: string,
+     *                     type: string,
+     *                     required: bool,
+     *                     default: mixed,
+     *                     description: string|null,
+     *                     example?: mixed,
+     *                 }>,
+     *                 returns: array{type: string, description: string|null},
+     *                 throws: array<array{type: string, description: string|null}>,
+     *                 tags: array<string, list<string>>,
+     *                 links: list<array{url: string, description: string|null}>,
+     *                 deprecated: bool,
+     *                 operation: array{
+     *                     name: string|null,
+     *                     description: string|null,
+     *                     parameters: array<array-key, mixed>,
+     *                     results: array<array-key, mixed>,
+     *                 }|null,
+     *             }>,
+     *         }>,
+     *     }>,
+     * }|array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     workers: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         operations: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             parameters: list<array{
+     *                 name: string,
+     *                 type: string,
+     *                 required: bool,
+     *                 default: mixed,
+     *                 description: string|null,
+     *                 example?: mixed,
+     *             }>,
+     *             returns: array{type: string, description: string|null},
+     *             throws: array<array{type: string, description: string|null}>,
+     *             tags: array<string, list<string>>,
+     *             links: list<array{url: string, description: string|null}>,
+     *             deprecated: bool,
+     *             operation: array{
+     *                 name: string|null,
+     *                 description: string|null,
+     *                 parameters: array<array-key, mixed>,
+     *                 results: array<array-key, mixed>,
+     *             }|null,
+     *         }>,
+     *     }>,
+     * }|array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     operations: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         parameters: list<array{
+     *             name: string,
+     *             type: string,
+     *             required: bool,
+     *             default: mixed,
+     *             description: string|null,
+     *             example?: mixed,
+     *         }>,
+     *         returns: array{type: string, description: string|null},
+     *         throws: array<array{type: string, description: string|null}>,
+     *         tags: array<string, list<string>>,
+     *         links: list<array{url: string, description: string|null}>,
+     *         deprecated: bool,
+     *         operation: array{
+     *             name: string|null,
+     *             description: string|null,
+     *             parameters: array<array-key, mixed>,
+     *             results: array<array-key, mixed>,
+     *         }|null,
+     *     }>,
+     * }|array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * }))
      */
     public function tree(?string $id = null): array;
 }

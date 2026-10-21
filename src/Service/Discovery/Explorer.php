@@ -67,8 +67,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return list<array<string, mixed>>
      */
     public function getPackages(): array
     {
@@ -89,8 +87,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return list<array<string, mixed>>
      */
     public function getComponents(string $package): array
     {
@@ -115,8 +111,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return list<array<string, mixed>>
      */
     public function getWorkers(string $package, string $component): array
     {
@@ -142,8 +136,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return list<array<string, mixed>>
      */
     public function getOperations(
         string $package,
@@ -179,7 +171,6 @@ class Explorer implements ExplorerInterface
      *
      * @param string $package
      * @param boolean $withComponents
-     * @return array<string, mixed>
      */
     public function getPackage(
         string $package,
@@ -208,7 +199,6 @@ class Explorer implements ExplorerInterface
      * @param string $package
      * @param string $component
      * @param boolean $withWorkers
-     * @return array<string, mixed>
      */
     public function getComponent(
         string $package,
@@ -247,7 +237,6 @@ class Explorer implements ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param boolean $withOperations
-     * @return array<string, mixed>
      */
     public function getWorker(
         string $package,
@@ -326,8 +315,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, mixed>
      */
     public function describe(?string $id = null): array
     {
@@ -357,8 +344,6 @@ class Explorer implements ExplorerInterface
 
     /**
      * {@inheritDoc}
-     *
-     * @return array<string, mixed>
      */
     public function tree(?string $id = null): array
     {
@@ -434,7 +419,53 @@ class Explorer implements ExplorerInterface
      * own PHPDoc, so there is no reason for them to be missing here just
      * because the rest of the shape does not apply.
      *
-     * @return array<string, mixed>
+     * @return array{
+     *     summary: string|null,
+     *     description: string|null,
+     *     packages: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         components: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             workers: list<array{
+     *                 id: string,
+     *                 name: string,
+     *                 summary: string|null,
+     *                 description: string|null,
+     *                 operations: list<array{
+     *                     id: string,
+     *                     name: string,
+     *                     summary: string|null,
+     *                     description: string|null,
+     *                     parameters: list<array{
+     *                         name: string,
+     *                         type: string,
+     *                         required: bool,
+     *                         default: mixed,
+     *                         description: string|null,
+     *                         example?: mixed,
+     *                     }>,
+     *                     returns: array{type: string, description: string|null},
+     *                     throws: array<array{type: string, description: string|null}>,
+     *                     tags: array<string, list<string>>,
+     *                     links: list<array{url: string, description: string|null}>,
+     *                     deprecated: bool,
+     *                     operation: array{
+     *                         name: string|null,
+     *                         description: string|null,
+     *                         parameters: array<array-key, mixed>,
+     *                         results: array<array-key, mixed>,
+     *                     }|null,
+     *                 }>,
+     *             }>,
+     *         }>,
+     *     }>,
+     * }
      */
     private function buildPackagesTree(): array
     {
@@ -465,7 +496,49 @@ class Explorer implements ExplorerInterface
      * workers and operations) nested underneath.
      *
      * @param string $package
-     * @return array<string, mixed>
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     components: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         workers: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             operations: list<array{
+     *                 id: string,
+     *                 name: string,
+     *                 summary: string|null,
+     *                 description: string|null,
+     *                 parameters: list<array{
+     *                     name: string,
+     *                     type: string,
+     *                     required: bool,
+     *                     default: mixed,
+     *                     description: string|null,
+     *                     example?: mixed,
+     *                 }>,
+     *                 returns: array{type: string, description: string|null},
+     *                 throws: array<array{type: string, description: string|null}>,
+     *                 tags: array<string, list<string>>,
+     *                 links: list<array{url: string, description: string|null}>,
+     *                 deprecated: bool,
+     *                 operation: array{
+     *                     name: string|null,
+     *                     description: string|null,
+     *                     parameters: array<array-key, mixed>,
+     *                     results: array<array-key, mixed>,
+     *                 }|null,
+     *             }>,
+     *         }>,
+     *     }>,
+     * }
      */
     private function buildPackageTree(string $package): array
     {
@@ -498,7 +571,43 @@ class Explorer implements ExplorerInterface
      *
      * @param string $package
      * @param string $component
-     * @return array<string, mixed>
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     workers: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         operations: list<array{
+     *             id: string,
+     *             name: string,
+     *             summary: string|null,
+     *             description: string|null,
+     *             parameters: list<array{
+     *                 name: string,
+     *                 type: string,
+     *                 required: bool,
+     *                 default: mixed,
+     *                 description: string|null,
+     *                 example?: mixed,
+     *             }>,
+     *             returns: array{type: string, description: string|null},
+     *             throws: array<array{type: string, description: string|null}>,
+     *             tags: array<string, list<string>>,
+     *             links: list<array{url: string, description: string|null}>,
+     *             deprecated: bool,
+     *             operation: array{
+     *                 name: string|null,
+     *                 description: string|null,
+     *                 parameters: array<array-key, mixed>,
+     *                 results: array<array-key, mixed>,
+     *             }|null,
+     *         }>,
+     *     }>,
+     * }
      */
     private function buildComponentTree(string $package, string $component): array
     {
@@ -533,7 +642,37 @@ class Explorer implements ExplorerInterface
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @return array<string, mixed>
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     operations: list<array{
+     *         id: string,
+     *         name: string,
+     *         summary: string|null,
+     *         description: string|null,
+     *         parameters: list<array{
+     *             name: string,
+     *             type: string,
+     *             required: bool,
+     *             default: mixed,
+     *             description: string|null,
+     *             example?: mixed,
+     *         }>,
+     *         returns: array{type: string, description: string|null},
+     *         throws: array<array{type: string, description: string|null}>,
+     *         tags: array<string, list<string>>,
+     *         links: list<array{url: string, description: string|null}>,
+     *         deprecated: bool,
+     *         operation: array{
+     *             name: string|null,
+     *             description: string|null,
+     *             parameters: array<array-key, mixed>,
+     *             results: array<array-key, mixed>,
+     *         }|null,
+     *     }>,
+     * }
      */
     private function buildWorkerTree(string $package, string $component, string $worker): array
     {
@@ -550,8 +689,55 @@ class Explorer implements ExplorerInterface
      * @param string $component
      * @param string $worker
      * @param string $operation
-     * @param array<string, mixed> $info
-     * @return array<string, mixed>
+     * @param array{
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * } $info
+     * @return array{
+     *     id: string,
+     *     name: string,
+     *     summary: string|null,
+     *     description: string|null,
+     *     parameters: list<array{
+     *         name: string,
+     *         type: string,
+     *         required: bool,
+     *         default: mixed,
+     *         description: string|null,
+     *         example?: mixed,
+     *     }>,
+     *     returns: array{type: string, description: string|null},
+     *     throws: array<array{type: string, description: string|null}>,
+     *     tags: array<string, list<string>>,
+     *     links: list<array{url: string, description: string|null}>,
+     *     deprecated: bool,
+     *     operation: array{
+     *         name: string|null,
+     *         description: string|null,
+     *         parameters: array<array-key, mixed>,
+     *         results: array<array-key, mixed>,
+     *     }|null,
+     * }
      */
     private function buildOperation(
         string $package,
