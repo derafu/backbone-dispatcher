@@ -37,7 +37,8 @@
         "opis/json-schema": "^2.6",
         "phpstan/phpstan": "^2.3",
         "phpunit/phpunit": "^13.4",
-        "nikic/php-parser": "^5.9"
+        "nikic/php-parser": "^5.9",
+        "symfony/config": "^8.1"
     },
     "suggest": {
         "opis/json-schema": "Required to use AbstractDeserializer::assertSchema().",
