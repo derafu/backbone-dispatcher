@@ -1,0 +1,28 @@
+imports:
+    - { resource: '../../../resources/config/backbone-dispatcher-services.yaml' }
+
+services:
+    Derafu\Backbone\Contract\PackageRegistryInterface:
+        class: Derafu\TestsBackboneDispatcher\Fixture\ExamplePackageRegistry
+        calls:
+            - registerPackage: [example_package, '@Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage']
+
+    Derafu\TestsBackboneDispatcher\Fixture\ExamplePackage:
+        arguments:
+            $components:
+                example_component: '@Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent'
+
+    Derafu\TestsBackboneDispatcher\Fixture\ExampleComponent:
+        arguments:
+            $workers:
+                example_worker: '@Derafu\TestsBackboneDispatcher\Fixture\WiringWorker'
+
+    Derafu\TestsBackboneDispatcher\Fixture\WiringWorker: ~
+
+    app.translator:
+        class: Symfony\Component\Translation\Translator
+        factory: ['Derafu\Translation\TranslatorFactory', create]
+        arguments:
+            $defaultLocale: es
+            $fallbackLocales: [en]
+            $resourceProviders: !tagged_iterator derafu_translation.resource_provider

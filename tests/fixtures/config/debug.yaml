@@ -1,0 +1,7 @@
+imports:
+    - { resource: services.yaml }
+
+parameters:
+    derafu.backbone_dispatcher.environment: test
+    derafu.backbone_dispatcher.debug: true
+    derafu.backbone_dispatcher.project_dir: '%kernel.project_dir%'

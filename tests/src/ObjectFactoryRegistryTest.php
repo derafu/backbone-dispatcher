@@ -353,4 +353,25 @@ class ObjectFactoryRegistryTest extends TestCase
         $this->assertSame('example', $value->getName());
         $this->assertSame(5, $value->getAmount());
     }
+
+    public function testIterableContributionsKeepTheirTargetTypesAndOverrideTheFallback(): void
+    {
+        $registry = new ObjectFactoryRegistry(
+            $this->deserializerContributions(),
+            new FromArrayDeserializer(),
+        );
+        $bag = $registry->create(['name' => 'folios', 'amount' => 3], ExampleBag::class);
+        $this->assertInstanceOf(ExampleBag::class, $bag);
+        $this->assertSame('folios (via registry)', $bag->getName());
+        $greeting = $registry->create('Hello', ExampleGreeting::class);
+        $this->assertInstanceOf(ExampleGreeting::class, $greeting);
+        $this->assertSame('Hello', $greeting->getMessage());
+    }
+
+    /** @return iterable<class-string, DeserializerInterface> */
+    private function deserializerContributions(): iterable
+    {
+        yield ExampleBag::class => new ExampleBagDeserializer();
+        yield ExampleGreeting::class => new ExampleGreetingDeserializer();
+    }
 }

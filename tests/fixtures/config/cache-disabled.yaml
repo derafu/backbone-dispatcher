@@ -1,0 +1,5 @@
+imports:
+    - { resource: cache.yaml }
+
+parameters:
+    derafu.backbone_dispatcher.inspector.ttl: 0

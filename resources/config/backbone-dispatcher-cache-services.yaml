@@ -1,0 +1,19 @@
+# Includes the default dispatcher graph and decorates its shared inspector.
+# The application must provide Psr\Cache\CacheItemPoolInterface; no backend is
+# selected here. The undecorated inspector remains the decorator's inner service.
+imports:
+    - { resource: backbone-dispatcher-services.yaml }
+    - { resource: '../../../cache/resources/config/cache-services.yaml' }
+
+parameters:
+    derafu.backbone_dispatcher.inspector.ttl: 3600
+
+services:
+    Derafu\BackboneDispatcher\Contract\InspectorInterface $cached:
+        class: Derafu\BackboneDispatcher\Service\Reflection\CachedInspector
+        decorates: Derafu\BackboneDispatcher\Contract\InspectorInterface
+        arguments:
+            $inspector: '@.inner'
+            $cache: '@Psr\Cache\CacheItemPoolInterface'
+            $ttl: '%derafu.backbone_dispatcher.inspector.ttl%'
+            $cacheKey: '@Derafu\Cache\Contract\CacheKeyInterface'

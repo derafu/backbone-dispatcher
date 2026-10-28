@@ -4,12 +4,73 @@
 #   imports:
 #       - { resource: '../vendor/derafu/backbone-dispatcher/resources/config/backbone-dispatcher-services.yaml' }
 
+# The application supplies PackageRegistryInterface. Both discovery and dispatch
+# use the same attribute-based operation policy. Deserializers contribute the
+# derafu_backbone_dispatcher.deserializer tag with a type attribute containing
+# their target class/interface. Import backbone-dispatcher-cache-services.yaml
+# instead to decorate inspection using an application-provided PSR-6 pool.
+parameters:
+    derafu.backbone_dispatcher.environment: prod
+    derafu.backbone_dispatcher.debug: false
+    derafu.backbone_dispatcher.project_dir: null
+
 services:
 
     _defaults:
         autowire: true
         autoconfigure: true
         public: false
+
+    Derafu\BackboneDispatcher\Contract\InspectorInterface:
+        class: Derafu\BackboneDispatcher\Service\Reflection\Inspector
+
+    Derafu\BackboneDispatcher\Contract\DeserializerInterface:
+        class: Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer
+
+    Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface:
+        class: Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry
+        # Deserializers may depend on this factory to construct nested objects.
+        lazy: true
+        arguments:
+            $deserializers: !tagged_iterator
+                tag: derafu_backbone_dispatcher.deserializer
+                index_by: type
+            $fallback: '@Derafu\BackboneDispatcher\Contract\DeserializerInterface'
+
+    Derafu\BackboneDispatcher\Service\Resolution\Caster: ~
+    Derafu\BackboneDispatcher\Service\Resolution\Validator: ~
+    Derafu\BackboneDispatcher\Service\Resolution\Resolver: ~
+
+    Derafu\BackboneDispatcher\Contract\SerializerInterface:
+        class: Derafu\BackboneDispatcher\Service\Serialization\Serializer
+
+    Derafu\BackboneDispatcher\Contract\OperationPolicyInterface:
+        class: Derafu\BackboneDispatcher\Service\Policy\TaggedOperationPolicy
+
+    Derafu\BackboneDispatcher\Contract\DirectDispatcherInterface:
+        class: Derafu\BackboneDispatcher\Service\Dispatch\DirectDispatcher
+
+    Derafu\BackboneDispatcher\Contract\TypedDispatcherInterface:
+        class: Derafu\BackboneDispatcher\Service\Dispatch\TypedDispatcher
+
+    Derafu\BackboneDispatcher\Contract\SafeDispatcherInterface:
+        class: Derafu\BackboneDispatcher\Service\Dispatch\SafeDispatcher
+        arguments:
+            $environment: '%derafu.backbone_dispatcher.environment%'
+            $debug: '%derafu.backbone_dispatcher.debug%'
+            $projectDir: '%derafu.backbone_dispatcher.project_dir%'
+
+    Derafu\BackboneDispatcher\Contract\ExplorerInterface:
+        class: Derafu\BackboneDispatcher\Service\Discovery\Explorer
+        arguments:
+            $operationPolicy: '@Derafu\BackboneDispatcher\Contract\OperationPolicyInterface'
+
+    Derafu\BackboneDispatcher\Contract\SafeExplorerInterface:
+        class: Derafu\BackboneDispatcher\Service\Discovery\SafeExplorer
+        arguments:
+            $environment: '%derafu.backbone_dispatcher.environment%'
+            $debug: '%derafu.backbone_dispatcher.debug%'
+            $projectDir: '%derafu.backbone_dispatcher.project_dir%'
 
     # Feeds resources/translations into the consuming app's Translator (the
     # app must pass $resourceProviders: !tagged_iterator

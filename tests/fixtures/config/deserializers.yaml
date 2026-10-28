@@ -1,0 +1,15 @@
+imports:
+    - { resource: services.yaml }
+
+services:
+    Derafu\TestsBackboneDispatcher\Fixture\ExampleBagDeserializer:
+        tags:
+            - name: derafu_backbone_dispatcher.deserializer
+              type: Derafu\TestsBackboneDispatcher\Fixture\ExampleBag
+
+    Derafu\TestsBackboneDispatcher\Fixture\NestedGreetingDeserializer:
+        arguments:
+            $factory: '@Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface'
+        tags:
+            - name: derafu_backbone_dispatcher.deserializer
+              type: Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting

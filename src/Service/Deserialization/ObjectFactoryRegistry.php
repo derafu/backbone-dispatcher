@@ -50,17 +50,23 @@ use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
  */
 class ObjectFactoryRegistry implements ObjectFactoryInterface
 {
+    /** @var array<class-string, DeserializerInterface> */
+    private readonly array $deserializers;
+
     /**
-     * @param array<class-string, DeserializerInterface> $deserializers Keyed
+     * @param iterable<class-string, DeserializerInterface> $deserializers Keyed
      * by the exact class/interface name each one builds.
      * @param DeserializerInterface|null $fallback Tried when no entry in
      * `$deserializers` matches, e.g. a `FromArrayDeserializer` for classes
      * that follow that convention without needing explicit registration.
      */
     public function __construct(
-        private readonly array $deserializers = [],
+        iterable $deserializers = [],
         private readonly ?DeserializerInterface $fallback = null,
     ) {
+        $this->deserializers = is_array($deserializers)
+            ? $deserializers
+            : iterator_to_array($deserializers);
     }
 
     /**

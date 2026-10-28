@@ -1,0 +1,7 @@
+imports:
+    - { resource: '../../../resources/config/backbone-dispatcher-cache-services.yaml' }
+    - { resource: services.yaml }
+
+services:
+    Psr\Cache\CacheItemPoolInterface:
+        class: Symfony\Component\Cache\Adapter\ArrayAdapter
