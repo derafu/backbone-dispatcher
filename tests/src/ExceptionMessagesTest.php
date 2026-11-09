@@ -15,6 +15,7 @@ namespace Derafu\TestsBackboneDispatcher;
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
 use Derafu\BackboneDispatcher\Exception\InvalidDiscoveryIdException;
+use Derafu\BackboneDispatcher\Exception\InvalidEnumValueException;
 use Derafu\BackboneDispatcher\Exception\InvalidOperationIdException;
 use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
 use Derafu\BackboneDispatcher\Exception\MissingOptionalDependencyException;
@@ -36,6 +37,7 @@ use Throwable;
 #[CoversClass(ClassNotFoundException::class)]
 #[CoversClass(FromArrayMethodNotFoundException::class)]
 #[CoversClass(InvalidDiscoveryIdException::class)]
+#[CoversClass(InvalidEnumValueException::class)]
 #[CoversClass(InvalidOperationIdException::class)]
 #[CoversClass(InvalidParameterTypeException::class)]
 #[CoversClass(MissingOptionalDependencyException::class)]
@@ -55,6 +57,7 @@ class ExceptionMessagesTest extends TestCase
             'missing factory method' => [static fn () => FromArrayMethodNotFoundException::forClass('Example'), 'Method Example::fromArray() does not exist.', 'El método Example::fromArray() no existe.'],
             'discovery identifier' => [static fn () => InvalidDiscoveryIdException::forId('a.b.c.d'), 'The discovery id a.b.c.d is not valid. It must have the structure: package[.component[.worker[::operation]]].', 'El id de descubrimiento a.b.c.d no es válido. Debe tener la estructura: package[.component[.worker[::operation]]].'],
             'operation identifier' => [static fn () => InvalidOperationIdException::forId('invalid'), 'The operation id invalid is not valid. It must have the structure: package.component.worker::operation.', 'El id de operación invalid no es válido. Debe tener la estructura: package.component.worker::operation.'],
+            'enum value' => [static fn () => InvalidEnumValueException::forEnum('Example', 'x', ['a', 'b']), 'The value "x" is not valid for the enum Example. The allowed values are: "a", "b".', 'El valor "x" no es válido para el enum Example. Los valores permitidos son: "a", "b".'],
             'parameter type' => [static fn () => InvalidParameterTypeException::forParameter('amount', 'int'), 'The parameter amount must be of type int.', 'El parámetro amount debe ser de tipo int.'],
             'missing parameter' => [static fn () => MissingParameterException::forParameter('amount', 'int'), 'The parameter amount of type int is missing from the request data.', 'Falta el parámetro amount de tipo int en los datos de la solicitud.'],
             'optional dependency' => [static fn () => MissingOptionalDependencyException::forFeature('Example::validate()', 'opis/json-schema'), 'Example::validate() requires opis/json-schema, which is not installed. Run: composer require --dev opis/json-schema', 'Example::validate() requiere opis/json-schema, que no está instalado. Ejecuta: composer require --dev opis/json-schema'],
@@ -78,6 +81,25 @@ class ExceptionMessagesTest extends TestCase
         $this->assertSame($spanish, $exception->trans($translator));
         $this->assertSame(0, $exception->getCode());
         $this->assertNull($exception->getPrevious());
+    }
+
+    public function testEnumValueErrorShowsALongValueTruncatedAndChainsTheCause(): void
+    {
+        $cause = new RuntimeException('Rejected');
+        $exception = InvalidEnumValueException::forEnum('Example', str_repeat('x', 300), [1, 2], $cause);
+
+        $this->assertSame($cause, $exception->getPrevious());
+        $this->assertSame(
+            'The value "' . str_repeat('x', 96) . '... is not valid for the enum Example. The allowed values are: 1, 2.',
+            $exception->getMessage()
+        );
+    }
+
+    public function testEnumValueErrorShowsAValueWithInvalidEncodingWithoutFailing(): void
+    {
+        $exception = InvalidEnumValueException::forEnum('Example', "\xB1", ['a']);
+
+        $this->assertStringContainsString('is not valid for the enum Example', $exception->getMessage());
     }
 
     public function testAllDeserializerRejectionsAreReportedInOrderAndTheLastIsChained(): void

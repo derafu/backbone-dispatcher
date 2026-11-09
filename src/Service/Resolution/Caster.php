@@ -12,8 +12,13 @@ declare(strict_types=1);
 
 namespace Derafu\BackboneDispatcher\Service\Resolution;
 
+use BackedEnum;
 use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
+use Derafu\BackboneDispatcher\Exception\InvalidEnumValueException;
 use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
+use Derafu\Value\Exception\ValueException;
+use Derafu\Value\ValueType;
+use ReflectionEnum;
 
 /**
  * Class for handling the mapping and conversion between internal data types of
@@ -80,6 +85,10 @@ class Caster
             );
         }
 
+        if ($from === 'enum') {
+            return $this->castEnum($value, $to);
+        }
+
         if ($from === 'object') {
             if ($to === 'array' && is_array($value)) {
                 return $value;
@@ -89,6 +98,56 @@ class Caster
         }
 
         return $value;
+    }
+
+    /**
+     * Casts a value to a case of a backed enum.
+     *
+     * The value must be exactly the backing value of a case (a string for a
+     * string-backed enum, an integer for an int-backed enum): no scalar is
+     * converted into the other.
+     *
+     * @param mixed $value
+     * @param string $class The class of the backed enum.
+     * @return BackedEnum
+     * @throws InvalidEnumValueException If the value is not a value of the enum.
+     * @throws InvalidParameterTypeException If the class is not a backed enum.
+     */
+    private function castEnum(mixed $value, string $class): BackedEnum
+    {
+        if (!is_a($class, BackedEnum::class, true)) {
+            throw InvalidParameterTypeException::forParameter('value', $class);
+        }
+
+        try {
+            return ValueType::backedEnum($class)->parse($value);
+        } catch (ValueException $exception) {
+            throw InvalidEnumValueException::forEnum(
+                $class,
+                $value,
+                array_map(
+                    static fn (BackedEnum $case): int|string => $case->value,
+                    $class::cases()
+                ),
+                $exception
+            );
+        }
+    }
+
+    /**
+     * Gets the type of the backing values of a backed enum.
+     *
+     * @param string $type A type name.
+     * @return string|null `'int'` or `'string'` if the type is a backed enum,
+     * or `null` if it is not.
+     */
+    private function getBackedEnumType(string $type): ?string
+    {
+        if (!enum_exists($type) || !is_a($type, BackedEnum::class, true)) {
+            return null;
+        }
+
+        return (new ReflectionEnum($type))->getBackingType()?->getName();
     }
 
     /** @return array<string, mixed>|string|null */
@@ -126,6 +185,9 @@ class Caster
      * keyword cannot distinguish which class beyond that (a `oneOf`/`$ref`
      * schema would be a separate feature).
      *
+     * A backed enum (a single type, not a union) is translated to the type of
+     * its backing values: `'string'` or `'integer'`.
+     *
      * @param string $type
      * @return string|string[] A single type name, or (for a union) the list
      * of every distinct candidate's translated type name.
@@ -139,6 +201,11 @@ class Caster
             )));
 
             return count($names) === 1 ? $names[0] : $names;
+        }
+
+        $enumType = $this->getBackedEnumType($type);
+        if ($enumType !== null) {
+            return $enumType === 'int' ? 'integer' : 'string';
         }
 
         return $this->translateScalarName($type);
@@ -158,10 +225,16 @@ class Caster
      * object factory (which itself already knows how to fall back to the
      * `string` candidate).
      *
-     * The one new outcome is `'native'`: a union where every candidate is a
+     * A `'native'` outcome is also possible: a union where every candidate is a
      * scalar type (`int|string`, say). There, the value already comes out
      * of `json_decode()` (or an equivalent transport) as one of those PHP
      * scalar types, so nothing needs to be cast at all.
+     *
+     * A backed enum (a single type, not a union) resolves to its own `'enum'`
+     * strategy: its value is the backing value of one of its cases, and
+     * `cast()` converts it to that case. Any other enum, and a union that has an
+     * enum among its candidates, is bucketed as `'object'` like any other
+     * class.
      *
      * A `'SomeClass[]'` type (an `array` parameter whose PHPDoc `@param`
      * documented its element class, see `Inspector::resolveArrayElementType()`)
@@ -187,6 +260,10 @@ class Caster
             }
 
             return 'native';
+        }
+
+        if ($this->getBackedEnumType($type) !== null) {
+            return 'enum';
         }
 
         return $this->translateScalarName($type);

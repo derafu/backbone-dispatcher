@@ -33,6 +33,8 @@ return [
         'El id de operación {id} no es válido. Debe tener la estructura: package.component.worker::operation.',
     'The parameter {name} must be of type {type}.' =>
         'El parámetro {name} debe ser de tipo {type}.',
+    'The value {given} is not valid for the enum {enum}. The allowed values are: {values}.' =>
+        'El valor {given} no es válido para el enum {enum}. Los valores permitidos son: {values}.',
     '{feature} requires {package}, which is not installed. Run: composer require --dev {package}' =>
         '{feature} requiere {package}, que no está instalado. Ejecuta: composer require --dev {package}',
     'The parameter {name} of type {type} is missing from the request data.' =>

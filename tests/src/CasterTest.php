@@ -13,14 +13,18 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
+use Derafu\BackboneDispatcher\Exception\InvalidEnumValueException;
 use Derafu\BackboneDispatcher\Exception\InvalidParameterTypeException;
 use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
 use Derafu\BackboneDispatcher\Service\Deserialization\ObjectFactoryRegistry;
 use Derafu\BackboneDispatcher\Service\Resolution\Caster;
 use Derafu\BackboneDispatcher\Translation\BackboneDispatcherTranslationResourceProvider;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleBackedEnum;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreeting;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleGreetingDeserializer;
+use Derafu\TestsBackboneDispatcher\Fixture\ExampleIntBackedEnum;
+use Derafu\TestsBackboneDispatcher\Fixture\ExamplePureEnum;
 use Derafu\Translation\TranslatorFactory;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -33,6 +37,7 @@ use stdClass;
 #[UsesClass(AbstractDeserializer::class)]
 #[UsesClass(ObjectFactoryRegistry::class)]
 #[UsesClass(FromArrayDeserializer::class)]
+#[UsesClass(InvalidEnumValueException::class)]
 #[UsesClass(InvalidParameterTypeException::class)]
 #[UsesClass(BackboneDispatcherTranslationResourceProvider::class)]
 class CasterTest extends TestCase
@@ -210,5 +215,73 @@ class CasterTest extends TestCase
     {
         $this->assertSame(12, $this->caster->cast(12, 'integer', 'int'));
         $this->assertSame(2.5, $this->caster->cast(2.5, 'number', 'float'));
+    }
+
+    public function testBackedEnumsResolveToTheTypeOfTheirBackingValues(): void
+    {
+        $this->assertSame('string', $this->caster->resolveType(ExampleBackedEnum::class));
+        $this->assertSame('integer', $this->caster->resolveType(ExampleIntBackedEnum::class));
+    }
+
+    public function testEnumsWithoutBackingValuesResolveAsObjects(): void
+    {
+        $this->assertSame('object', $this->caster->resolveType(ExamplePureEnum::class));
+        $this->assertSame('object', $this->caster->resolveCastStrategy(ExamplePureEnum::class));
+    }
+
+    public function testBackedEnumsHaveTheirOwnCastStrategy(): void
+    {
+        $this->assertSame('enum', $this->caster->resolveCastStrategy(ExampleBackedEnum::class));
+        $this->assertSame('enum', $this->caster->resolveCastStrategy(ExampleIntBackedEnum::class));
+    }
+
+    public function testUnionsWithAnEnumKeepTheObjectStrategy(): void
+    {
+        $this->assertSame('object', $this->caster->resolveCastStrategy(ExampleBackedEnum::class . '|string'));
+    }
+
+    public function testCastsBackingValuesToEnumCases(): void
+    {
+        $this->assertSame(ExampleBackedEnum::Inactive, $this->caster->cast('inactive', 'enum', ExampleBackedEnum::class));
+        $this->assertSame(ExampleIntBackedEnum::High, $this->caster->cast(2, 'enum', ExampleIntBackedEnum::class));
+    }
+
+    public function testAnEnumCaseIsKept(): void
+    {
+        $this->assertSame(
+            ExampleBackedEnum::Active,
+            $this->caster->cast(ExampleBackedEnum::Active, 'enum', ExampleBackedEnum::class)
+        );
+    }
+
+    public function testNullIsNotCastToAnEnum(): void
+    {
+        $this->assertNull($this->caster->cast(null, 'enum', ExampleBackedEnum::class));
+    }
+
+    #[TestWith(['deleted', ExampleBackedEnum::class, 'The value "deleted" is not valid for the enum ' . ExampleBackedEnum::class . '. The allowed values are: "active", "inactive".'])]
+    #[TestWith([3, ExampleIntBackedEnum::class, 'The value 3 is not valid for the enum ' . ExampleIntBackedEnum::class . '. The allowed values are: 1, 2.'])]
+    #[TestWith(['1', ExampleIntBackedEnum::class, 'The value "1" is not valid for the enum ' . ExampleIntBackedEnum::class . '. The allowed values are: 1, 2.'])]
+    #[TestWith([1, ExampleBackedEnum::class, 'The value 1 is not valid for the enum ' . ExampleBackedEnum::class . '. The allowed values are: "active", "inactive".'])]
+    #[TestWith([['active'], ExampleBackedEnum::class, 'The value array is not valid for the enum ' . ExampleBackedEnum::class . '. The allowed values are: "active", "inactive".'])]
+    #[TestWith([1.5, ExampleIntBackedEnum::class, 'The value float is not valid for the enum ' . ExampleIntBackedEnum::class . '. The allowed values are: 1, 2.'])]
+    public function testInvalidEnumValuesAreRejectedListingTheAllowedValues(mixed $value, string $enum, string $message): void
+    {
+        try {
+            $this->caster->cast($value, 'enum', $enum);
+            $this->fail('The value must be rejected.');
+        } catch (InvalidEnumValueException $exception) {
+            $this->assertSame($message, $exception->getMessage());
+            $this->assertNotNull($exception->getPrevious());
+        }
+    }
+
+    #[TestWith([ExamplePureEnum::class])]
+    #[TestWith([stdClass::class])]
+    public function testTheEnumStrategyRejectsATypeThatIsNotABackedEnum(string $type): void
+    {
+        $this->expectException(InvalidParameterTypeException::class);
+
+        $this->caster->cast('active', 'enum', $type);
     }
 }
