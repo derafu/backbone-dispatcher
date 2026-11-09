@@ -15,6 +15,7 @@ namespace Derafu\BackboneDispatcher\Service\Deserialization;
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
+use Derafu\Value\ValueCaster;
 
 /**
  * Builds an object by calling the target class's own static `fromArray()`
@@ -40,6 +41,6 @@ class FromArrayDeserializer extends AbstractDeserializer
 
         $data = $this->assertArray($data);
 
-        return $class::fromArray($data);
+        return ValueCaster::requireObject($class::fromArray($data), $class);
     }
 }

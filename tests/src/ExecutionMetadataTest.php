@@ -14,6 +14,7 @@ namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\ValueObject\ExecutionMetadata;
 use Derafu\TestsBackboneDispatcher\Fixture\SystemMetricFailures;
+use Derafu\Value\ValueType;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\PreserveGlobalState;
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
@@ -32,7 +33,12 @@ class ExecutionMetadataTest extends TestCase
         $cpuUsage = getrusage();
         $this->assertIsArray($cpuUsage);
 
-        return [date(DATE_ATOM), $monotonicStart, memory_get_usage(true), $cpuUsage];
+        return [
+            date(DATE_ATOM),
+            $monotonicStart,
+            memory_get_usage(true),
+            ValueType::mapOf(ValueType::int())->parse($cpuUsage),
+        ];
     }
 
     public function testKeepsTheGivenStartedAtAndComputesAFinishedAt(): void

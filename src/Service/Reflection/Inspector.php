@@ -363,7 +363,7 @@ class Inspector implements InspectorInterface
      *
      * @param string|false $docComment
      * @param DocBlock|null $docBlock
-     * @param callable $resolveParent Lazily resolves the parent's
+     * @param callable(): ?DocBlock $resolveParent Lazily resolves the parent's
      *   `DocBlock`; never called when no inheritDoc marker is present.
      * @return DocBlock|null
      */

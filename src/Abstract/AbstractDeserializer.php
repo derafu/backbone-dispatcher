@@ -16,6 +16,7 @@ use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\MissingOptionalDependencyException;
 use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
 use Derafu\Translation\Exception\Logic\TranslatableInvalidArgumentException as InvalidArgumentException;
+use Derafu\Value\ValueType;
 use Opis\JsonSchema\Errors\ErrorFormatter;
 use Opis\JsonSchema\Helper;
 use Opis\JsonSchema\Validator;
@@ -143,7 +144,9 @@ abstract class AbstractDeserializer implements DeserializerInterface
 
         if ($error !== null) {
             $messages = [];
-            foreach ((new ErrorFormatter())->format($error) as $pointer => $pointerMessages) {
+            $formatted = ValueType::mapOf(ValueType::listOf(ValueType::string()))
+                ->parse((new ErrorFormatter())->format($error));
+            foreach ($formatted as $pointer => $pointerMessages) {
                 foreach ($pointerMessages as $message) {
                     $messages[] = $pointer === '' ? $message : "{$pointer}: {$message}";
                 }

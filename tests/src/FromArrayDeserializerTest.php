@@ -16,6 +16,8 @@ use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
 use Derafu\BackboneDispatcher\Service\Deserialization\FromArrayDeserializer;
 use Derafu\TestsBackboneDispatcher\Fixture\ExampleBag;
+use Derafu\TestsBackboneDispatcher\Fixture\MisbehavingFromArray;
+use Derafu\Value\Exception\TypeMismatchException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -62,5 +64,27 @@ class FromArrayDeserializerTest extends TestCase
         ));
 
         $this->deserializer->deserialize([], stdClass::class);
+    }
+
+    public function testThrowsWhenFromArrayReturnsAnObjectOfAnotherClass(): void
+    {
+        $this->expectException(TypeMismatchException::class);
+        $this->expectExceptionMessage(sprintf(
+            'The value at "$" must be of type %s, stdClass given.',
+            MisbehavingFromArray::class
+        ));
+
+        $this->deserializer->deserialize(['result' => new stdClass()], MisbehavingFromArray::class);
+    }
+
+    public function testThrowsWhenFromArrayDoesNotReturnAnObject(): void
+    {
+        $this->expectException(TypeMismatchException::class);
+        $this->expectExceptionMessage(sprintf(
+            'The value at "$" must be of type %s, string given.',
+            MisbehavingFromArray::class
+        ));
+
+        $this->deserializer->deserialize(['result' => 'not an object'], MisbehavingFromArray::class);
     }
 }

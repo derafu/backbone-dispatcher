@@ -27,13 +27,20 @@ class SystemMetricFailures
 namespace Derafu\BackboneDispatcher\ValueObject;
 
 use Derafu\TestsBackboneDispatcher\Fixture\SystemMetricFailures;
+use Derafu\Value\ValueType;
 
 /**
  * @return array<string, int>|false
  */
 function getrusage(int $mode = 0): array|false
 {
-    return SystemMetricFailures::$cpu ? false : \getrusage($mode);
+    if (SystemMetricFailures::$cpu) {
+        return false;
+    }
+
+    $usage = \getrusage($mode);
+
+    return $usage === false ? false : ValueType::mapOf(ValueType::int())->parse($usage);
 }
 
 /**
@@ -52,11 +59,18 @@ function getmypid(): int|false
 namespace Derafu\BackboneDispatcher\Service\Dispatch;
 
 use Derafu\TestsBackboneDispatcher\Fixture\SystemMetricFailures;
+use Derafu\Value\ValueType;
 
 /**
  * @return array<string, int>|false
  */
 function getrusage(int $mode = 0): array|false
 {
-    return SystemMetricFailures::$cpu ? false : \getrusage($mode);
+    if (SystemMetricFailures::$cpu) {
+        return false;
+    }
+
+    $usage = \getrusage($mode);
+
+    return $usage === false ? false : ValueType::mapOf(ValueType::int())->parse($usage);
 }
