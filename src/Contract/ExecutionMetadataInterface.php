@@ -113,10 +113,10 @@ interface ExecutionMetadataInterface extends JsonSerializable
      * Converts the execution metadata to an array.
      *
      * @return array{
-     *     startedAt: string, finishedAt: string, timestamp: float,
-     *     realTime: float, userTime: float|null, systemTime: float|null,
-     *     memoryUsed: int, peakMemory: int, pid: int|null,
-     *     loadAverage1Min: float|null, loadAverage5Min: float|null, loadAverage15Min: float|null
+     *     started_at: string, finished_at: string, timestamp: float,
+     *     real_time: float, user_time: float|null, system_time: float|null,
+     *     memory_used: int, peak_memory: int, pid: int|null,
+     *     load_average_1_min: float|null, load_average_5_min: float|null, load_average_15_min: float|null
      * }
      */
     public function toArray(): array;

@@ -201,27 +201,27 @@ class ExecutionMetadata implements ExecutionMetadataInterface
     public function toArray(): array
     {
         return [
-            'startedAt' => $this->startedAt,
-            'finishedAt' => $this->finishedAt,
+            'started_at' => $this->startedAt,
+            'finished_at' => $this->finishedAt,
             'timestamp' => $this->timestamp,
-            'realTime' => $this->realTime,
-            'userTime' => $this->userTime,
-            'systemTime' => $this->systemTime,
-            'memoryUsed' => $this->memoryUsed,
-            'peakMemory' => $this->peakMemory,
+            'real_time' => $this->realTime,
+            'user_time' => $this->userTime,
+            'system_time' => $this->systemTime,
+            'memory_used' => $this->memoryUsed,
+            'peak_memory' => $this->peakMemory,
             'pid' => $this->pid,
-            'loadAverage1Min' => $this->loadAverage1Min,
-            'loadAverage5Min' => $this->loadAverage5Min,
-            'loadAverage15Min' => $this->loadAverage15Min,
+            'load_average_1_min' => $this->loadAverage1Min,
+            'load_average_5_min' => $this->loadAverage5Min,
+            'load_average_15_min' => $this->loadAverage15Min,
         ];
     }
 
     /**
      * @return array{
-     *     startedAt: string, finishedAt: string, timestamp: float,
-     *     realTime: float, userTime: float|null, systemTime: float|null,
-     *     memoryUsed: int, peakMemory: int, pid: int|null,
-     *     loadAverage1Min: float|null, loadAverage5Min: float|null, loadAverage15Min: float|null
+     *     started_at: string, finished_at: string, timestamp: float,
+     *     real_time: float, user_time: float|null, system_time: float|null,
+     *     memory_used: int, peak_memory: int, pid: int|null,
+     *     load_average_1_min: float|null, load_average_5_min: float|null, load_average_15_min: float|null
      * }
      */
     public function jsonSerialize(): array

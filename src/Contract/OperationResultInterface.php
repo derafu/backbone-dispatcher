@@ -64,7 +64,7 @@ interface OperationResultInterface extends JsonSerializable
     /**
      * Converts the operation result to an array.
      *
-     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null, metadata: ExecutionMetadataInterface, dataType: string|null}
+     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null, metadata: ExecutionMetadataInterface, data_type: string|null}
      */
     public function toArray(): array;
 }

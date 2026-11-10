@@ -54,12 +54,12 @@ class OperationResultTest extends TestCase
         $this->assertSame($type, $result->getDataType());
         $this->assertSame($metadata, $result->getMetadata());
         $this->assertNull($result->getProblem());
-        $this->assertSame(['success' => true, 'value' => $value, 'problem' => null, 'metadata' => $metadata, 'dataType' => $type], $result->toArray());
+        $this->assertSame(['success' => true, 'value' => $value, 'problem' => null, 'metadata' => $metadata, 'data_type' => $type], $result->toArray());
         $this->assertSame($result->toArray(), $result->jsonSerialize());
         $json = json_decode(json_encode($result, JSON_THROW_ON_ERROR), true, flags: JSON_THROW_ON_ERROR);
         $this->assertIsArray($json);
         $this->assertTrue($json['success']);
-        $this->assertSame($type, $json['dataType']);
+        $this->assertSame($type, $json['data_type']);
     }
 
     public function testFailurePreservesItsProblemAndMetadataWithoutAValueOrDataType(): void
@@ -75,7 +75,7 @@ class OperationResultTest extends TestCase
         $this->assertNull($result->getDataType());
         $this->assertSame($problem, $result->getProblem());
         $this->assertSame($metadata, $result->getMetadata());
-        $this->assertSame(['success' => false, 'value' => null, 'problem' => $problem, 'metadata' => $metadata, 'dataType' => null], $result->toArray());
+        $this->assertSame(['success' => false, 'value' => null, 'problem' => $problem, 'metadata' => $metadata, 'data_type' => null], $result->toArray());
         $this->assertSame($result->toArray(), $result->jsonSerialize());
     }
 }

@@ -124,18 +124,18 @@ class ExecutionMetadataTest extends TestCase
         $this->assertSame($metadata->toArray(), $metadata->jsonSerialize());
         $this->assertSame(
             [
-                'startedAt',
-                'finishedAt',
+                'started_at',
+                'finished_at',
                 'timestamp',
-                'realTime',
-                'userTime',
-                'systemTime',
-                'memoryUsed',
-                'peakMemory',
+                'real_time',
+                'user_time',
+                'system_time',
+                'memory_used',
+                'peak_memory',
                 'pid',
-                'loadAverage1Min',
-                'loadAverage5Min',
-                'loadAverage15Min',
+                'load_average_1_min',
+                'load_average_5_min',
+                'load_average_15_min',
             ],
             array_keys($metadata->toArray())
         );
@@ -155,8 +155,8 @@ class ExecutionMetadataTest extends TestCase
         $this->assertNotNull($metadata->getLoadAverage15Min());
         $this->assertGreaterThanOrEqual(0.0, $metadata->getRealTime());
         $this->assertGreaterThan(0, $metadata->getPeakMemory());
-        $this->assertNull($metadata->toArray()['userTime']);
-        $this->assertNull($metadata->jsonSerialize()['systemTime']);
+        $this->assertNull($metadata->toArray()['user_time']);
+        $this->assertNull($metadata->jsonSerialize()['system_time']);
     }
 
     #[RunInSeparateProcess]
@@ -182,7 +182,7 @@ class ExecutionMetadataTest extends TestCase
         $this->assertGreaterThan(0, $metadata->getPeakMemory());
         $this->assertSame($metadata->toArray(), $metadata->jsonSerialize());
         $json = json_encode($metadata, JSON_THROW_ON_ERROR);
-        foreach (['userTime', 'systemTime', 'pid', 'loadAverage1Min', 'loadAverage5Min', 'loadAverage15Min'] as $key) {
+        foreach (['user_time', 'system_time', 'pid', 'load_average_1_min', 'load_average_5_min', 'load_average_15_min'] as $key) {
             $this->assertStringContainsString('"' . $key . '":null', $json);
         }
     }

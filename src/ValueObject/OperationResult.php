@@ -125,12 +125,12 @@ class OperationResult implements OperationResultInterface
             'value' => $this->value,
             'problem' => $this->problem,
             'metadata' => $this->metadata,
-            'dataType' => $this->dataType,
+            'data_type' => $this->dataType,
         ];
     }
 
     /**
-     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null, metadata: ExecutionMetadataInterface, dataType: string|null}
+     * @return array{success: bool, value: mixed, problem: ProblemDetailInterface|null, metadata: ExecutionMetadataInterface, data_type: string|null}
      */
     public function jsonSerialize(): array
     {
