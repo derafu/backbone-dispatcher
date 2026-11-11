@@ -457,6 +457,7 @@ class Explorer implements ExplorerInterface
      *                     deprecated: bool,
      *                     operation: array{
      *                         name: string|null,
+     *                         summary: string|null,
      *                         description: string|null,
      *                         parameters: array<array-key, mixed>,
      *                         results: array<array-key, mixed>,
@@ -531,6 +532,7 @@ class Explorer implements ExplorerInterface
      *                 deprecated: bool,
      *                 operation: array{
      *                     name: string|null,
+     *                     summary: string|null,
      *                     description: string|null,
      *                     parameters: array<array-key, mixed>,
      *                     results: array<array-key, mixed>,
@@ -601,6 +603,7 @@ class Explorer implements ExplorerInterface
      *             deprecated: bool,
      *             operation: array{
      *                 name: string|null,
+     *                 summary: string|null,
      *                 description: string|null,
      *                 parameters: array<array-key, mixed>,
      *                 results: array<array-key, mixed>,
@@ -667,6 +670,7 @@ class Explorer implements ExplorerInterface
      *         deprecated: bool,
      *         operation: array{
      *             name: string|null,
+     *             summary: string|null,
      *             description: string|null,
      *             parameters: array<array-key, mixed>,
      *             results: array<array-key, mixed>,
@@ -708,6 +712,7 @@ class Explorer implements ExplorerInterface
      *     deprecated: bool,
      *     operation: array{
      *         name: string|null,
+     *         summary: string|null,
      *         description: string|null,
      *         parameters: array<array-key, mixed>,
      *         results: array<array-key, mixed>,
@@ -733,6 +738,7 @@ class Explorer implements ExplorerInterface
      *     deprecated: bool,
      *     operation: array{
      *         name: string|null,
+     *         summary: string|null,
      *         description: string|null,
      *         parameters: array<array-key, mixed>,
      *         results: array<array-key, mixed>,
