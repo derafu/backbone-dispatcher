@@ -79,29 +79,11 @@ class Inspector implements InspectorInterface
     }
 
     /**
-     * Checks whether `$method` is an operation of `$service`: a public
-     * method that exists on it (whether declared on its own class or
-     * inherited from a parent), whose name does not start with `_`.
-     *
-     * This is a purely technical, factual check — is there a real, callable
-     * public method by this name at all — and nothing more: it never judges
-     * whether the method is *meant* to be exposed as a business operation.
-     * That judgment belongs solely to whichever `OperationPolicyInterface`
-     * is configured (`AllowAllOperationPolicy`, `TaggedOperationPolicy`,
-     * etc.); this method, `getPublicMethods()`, and
-     * `hasOperationAttribute()` must never draw that line themselves.
-     *
-     * `DirectDispatcher` uses this to decide whether the operation exists
-     * at all (`OperationNotFoundException` otherwise), strictly before, and
-     * independently of, consulting the `OperationPolicyInterface`.
-     *
-     * @param object $service
-     * @param string $method
-     * @return bool
+     * {@inheritDoc}
      */
     public function isOperation(object $service, string $method): bool
     {
-        return $this->isOperationMethod($this->reflectClass($service), $method);
+        return $this->getOperationMethod($service, $method) !== null;
     }
 
     /**
@@ -114,17 +96,14 @@ class Inspector implements InspectorInterface
      */
     public function hasOperationAttribute(object $service, string $method): bool
     {
-        $reflection = $this->reflectClass($service);
+        $resolved = $this->getOperationMethod($service, $method);
 
-        if (!$this->isOperationMethod($reflection, $method)) {
-            return false;
-        }
-
-        return $reflection->getMethod($method)->getAttributes(Operation::class) !== [];
+        return $resolved !== null
+            && $this->reflectClass($service)->getMethod($resolved)->getAttributes(Operation::class) !== [];
     }
 
     /**
-     * Gets the parameters of one operation of a worker, by name.
+     * Gets parameters by the resolved PHP method name.
      *
      * Narrow and deliberately cheap: unlike `getPublicMethods()`, this only
      * ever touches PHPDoc for a parameter reflection alone cannot describe
@@ -207,7 +186,7 @@ class Inspector implements InspectorInterface
     }
 
     /**
-     * Gets the public methods of a class with its parameters.
+     * Gets public operation metadata indexed by external operation name.
      *
      * Never filters by `#[Operation]` or anything else: deciding which of
      * these public methods counts as an exposed operation is exclusively
@@ -222,7 +201,7 @@ class Inspector implements InspectorInterface
      *     throws: array<array{type: string, description: string|null}>,
      *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
      *     deprecated: bool,
-     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     *     operation: array{name: string|null, summary: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
      * }>
      */
     public function getPublicMethods(object $service): array
@@ -233,13 +212,7 @@ class Inspector implements InspectorInterface
         $docBlockFactory = DocBlockFactory::createInstance();
         $contextFactory = new ContextFactory();
 
-        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            $name = $method->getName();
-
-            if (!$this->isOperationMethod($reflection, $name)) {
-                continue;
-            }
-
+        foreach ($this->operationMethods($reflection) as $name => $method) {
             $attributes = $method->getAttributes(Operation::class);
             $operationAttribute = $attributes !== [] ? $attributes[0]->newInstance() : null;
 
@@ -278,6 +251,61 @@ class Inspector implements InspectorInterface
                 'deprecated' => !empty($tags['deprecated']),
                 'operation' => $operationAttribute?->toArray(),
             ];
+        }
+
+        return $methods;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getOperationMethod(object $service, string $operation): ?string
+    {
+        $reflection = $this->reflectClass($service);
+        $methods = $this->operationMethods($reflection);
+        if (isset($methods[$operation])) {
+            return $methods[$operation]->getName();
+        }
+
+        // Methods without an explicit external name retain PHP's case handling.
+        if ($this->isOperationMethod($reflection, $operation)) {
+            $method = $reflection->getMethod($operation);
+            $attributes = $method->getAttributes(Operation::class);
+            if ($attributes === [] || $attributes[0]->newInstance()->name === null) {
+                return $method->getName();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Indexes public operation methods by their external names.
+     *
+     * @param ReflectionClass<object> $reflection
+     * @return array<string, ReflectionMethod>
+     */
+    private function operationMethods(ReflectionClass $reflection): array
+    {
+        $methods = [];
+        foreach ($reflection->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            if (!$this->isOperationMethod($reflection, $method->getName())) {
+                continue;
+            }
+
+            $attributes = $method->getAttributes(Operation::class);
+            $name = ($attributes !== [] ? $attributes[0]->newInstance()->name : null)
+                ?? $method->getName();
+            if (isset($methods[$name])) {
+                throw new InvalidArgumentException([
+                    'The operation name "{name}" is declared by both {first} and {second} in {class}.',
+                    'name' => $name,
+                    'first' => $methods[$name]->getName(),
+                    'second' => $method->getName(),
+                    'class' => $reflection->getName(),
+                ]);
+            }
+            $methods[$name] = $method;
         }
 
         return $methods;
@@ -472,7 +500,7 @@ class Inspector implements InspectorInterface
     }
 
     /**
-     * Resolves the summary to report for a method: `#[Operation]`'s `name`
+     * Resolves the summary to report for a method: `#[Operation]`'s `summary`
      * when given, otherwise the PHPDoc summary.
      *
      * @param Operation|null $operationAttribute
@@ -481,8 +509,8 @@ class Inspector implements InspectorInterface
      */
     private function resolveSummary(?Operation $operationAttribute, ?DocBlock $docBlock): ?string
     {
-        if ($operationAttribute !== null && $operationAttribute->name !== null) {
-            return $operationAttribute->name;
+        if ($operationAttribute !== null && $operationAttribute->summary !== null) {
+            return $operationAttribute->summary;
         }
 
         return $docBlock?->getSummary() ?: null;

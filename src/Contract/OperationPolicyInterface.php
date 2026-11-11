@@ -32,7 +32,7 @@ interface OperationPolicyInterface
      * @param string $package
      * @param string $component
      * @param string $worker
-     * @param string $operation
+     * @param string $operation External operation name, as published by discovery.
      * @return bool
      */
     public function isAllowed(

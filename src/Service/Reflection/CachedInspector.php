@@ -23,7 +23,8 @@ use Psr\Cache\CacheItemPoolInterface;
  * two calls that parse PHPDoc for every method of a class, the same result
  * every time for a given class, until the next deploy.
  *
- * `isOperation()`, `hasOperationAttribute()` and `getOperationParameters()`
+ * `getOperationMethod()`, `isOperation()`, `hasOperationAttribute()` and
+ * `getOperationParameters()`
  * are deliberately left uncached, passed straight through to the wrapped
  * `InspectorInterface`: they never parse PHPDoc, they already run on every
  * dispatch, and reading them through a cache backend (e.g. a network round
@@ -67,6 +68,14 @@ class CachedInspector implements InspectorInterface
             fn () => $this->inspector->getClassDoc($service),
             $this->validateClassDoc(...)
         );
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function getOperationMethod(object $service, string $operation): ?string
+    {
+        return $this->inspector->getOperationMethod($service, $operation);
     }
 
     /**
@@ -169,7 +178,7 @@ class CachedInspector implements InspectorInterface
      *     throws: array<array{type: string, description: string|null}>,
      *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
      *     deprecated: bool,
-     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     *     operation: array{name: string|null, summary: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
      * }>
      */
     private function validatePublicMethods(array $value): array
@@ -196,6 +205,7 @@ class CachedInspector implements InspectorInterface
             if ($method['operation'] !== null) {
                 $operation = $this->requireArray($method, 'operation');
                 $operation['name'] = $this->requireNullableString($operation, 'name');
+                $operation['summary'] = $this->requireNullableString($operation, 'summary');
                 $operation['description'] = $this->requireNullableString($operation, 'description');
                 $operation['parameters'] = $this->requireArray($operation, 'parameters');
                 $operation['results'] = $this->requireArray($operation, 'results');

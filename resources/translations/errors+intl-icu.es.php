@@ -53,4 +53,6 @@ return [
         'A {deserializer} le faltan claves obligatorias: {keys}.',
     '{deserializer} does not match the expected schema: {errors}.' =>
         '{deserializer} no coincide con el esquema esperado: {errors}.',
+    'The operation name "{name}" is declared by both {first} and {second} in {class}.' =>
+        'El nombre de operación "{name}" está declarado por {first} y {second} en {class}.',
 ];

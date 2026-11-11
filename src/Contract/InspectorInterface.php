@@ -18,13 +18,27 @@ namespace Derafu\BackboneDispatcher\Contract;
  * `getClassDoc()` and `getPublicMethods()` parse PHPDoc for every method —
  * the same, deliberately expensive work every time, safe to cache (e.g.
  * with a decorator backed by a PSR-6 pool) since it only ever depends on
- * the class itself. `isOperation()`, `hasOperationAttribute()` and
- * `getOperationParameters()` are narrow, PHPDoc-free reflection checks used
- * on the dispatch path, on every single call — cheap enough on their own
- * that caching them would not be worth it.
+ * the class itself. `getOperationMethod()`, `isOperation()` and
+ * `hasOperationAttribute()` resolve external names without parsing PHPDoc.
+ * `getOperationParameters()` reads the resolved method's parameters,
+ * parsing PHPDoc only when required by an array parameter. These dispatch
+ * checks are forwarded directly by the cache decorator.
  */
 interface InspectorInterface
 {
+    /**
+     * Resolves an external operation name to its PHP method name.
+     *
+     * An explicit Operation name is the only external name of that method.
+     * Without one, the PHP method name is used. Returns null when the
+     * operation does not exist. Duplicate external names are rejected.
+     *
+     * @param object $service
+     * @param string $operation
+     * @return string|null
+     */
+    public function getOperationMethod(object $service, string $operation): ?string;
+
     /**
      * Gets the documentation of a class.
      *
@@ -37,9 +51,8 @@ interface InspectorInterface
     public function getClassDoc(object $service): array;
 
     /**
-     * Checks whether `$method` is an operation of `$service`: a public
-     * method that exists on it (declared directly or inherited), whose
-     * name does not start with `_`.
+     * Checks whether `$method` is an external operation name of `$service`.
+     * It resolves to a public PHP method whose name does not start with `_`.
      *
      * A purely technical existence check, never a judgment on whether the
      * method is meant to be exposed as a business operation — that is
@@ -63,7 +76,7 @@ interface InspectorInterface
     public function hasOperationAttribute(object $service, string $method): bool;
 
     /**
-     * Gets the parameters of one operation of a worker, by name.
+     * Gets parameters by the resolved PHP method name, not the external name.
      *
      * @param object $service
      * @param string $method
@@ -72,7 +85,7 @@ interface InspectorInterface
     public function getOperationParameters(object $service, string $method): array;
 
     /**
-     * Gets the public methods of a class with its parameters.
+     * Gets public operation metadata indexed by external operation name.
      *
      * Never filters by `#[Operation]` or anything else: deciding which of
      * these public methods counts as an exposed operation is exclusively
@@ -87,7 +100,7 @@ interface InspectorInterface
      *     throws: array<array{type: string, description: string|null}>,
      *     tags: array<string, list<string>>, links: list<array{url: string, description: string|null}>,
      *     deprecated: bool,
-     *     operation: array{name: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
+     *     operation: array{name: string|null, summary: string|null, description: string|null, parameters: array<array-key, mixed>, results: array<array-key, mixed>}|null
      * }>
      */
     public function getPublicMethods(object $service): array;

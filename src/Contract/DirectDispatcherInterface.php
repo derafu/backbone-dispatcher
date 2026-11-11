@@ -16,8 +16,9 @@ namespace Derafu\BackboneDispatcher\Contract;
  * Dispatches an operation (a public method) of a worker registered in the
  * backbone package registry.
  *
- * Note: an "operation" here is just the name of a public method of a
- * worker, resolved via reflection. It is unrelated to `derafu/backbone`'s
+ * An operation is identified by its Operation attribute's name, or the PHP
+ * method name when no external name is declared. Reflection resolves that
+ * external name to the public method. It is unrelated to `derafu/backbone`'s
  * own `JobInterface`/`#[Job]` (a separate, formally registered service type
  * in the Package/Component/Worker/Job hierarchy) — a worker may expose an
  * operation that internally uses one or more real Job objects, or none at

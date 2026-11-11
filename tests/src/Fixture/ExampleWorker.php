@@ -60,7 +60,7 @@ class ExampleWorker implements WorkerInterface
      * (`name`/`description`/`parameters`) on top of this very PHPDoc.
      */
     #[Operation(
-        name: 'Sum',
+        summary: 'Sum',
         description: 'Adds two integers together.',
         parameters: [
             'a' => ['example' => 5],

@@ -155,6 +155,7 @@ class CachedInspectorTest extends TestCase
         $this->assertNotEmpty($methods['double']['links']);
         $this->assertNotNull($methods['double']['operation']);
         $this->assertNull($methods['double']['operation']['name']);
+        $this->assertNull($methods['double']['operation']['summary']);
         $this->assertNull($methods['double']['operation']['description']);
         $this->assertSame($doc, $cached->getClassDoc($service));
         $this->assertSame($methods, $cached->getPublicMethods($service));
@@ -214,6 +215,8 @@ class CachedInspectorTest extends TestCase
             'non-boolean deprecation flag' => [['sum', 'deprecated'], 1, false],
             'missing operation' => [['sum', 'operation'], null, true],
             'non-array operation' => [['sum', 'operation'], false, false],
+            'missing operation summary' => [['sum', 'operation', 'summary'], null, true],
+            'invalid operation summary' => [['sum', 'operation', 'summary'], [], false],
             'invalid operation name' => [['sum', 'operation', 'name'], 12, false],
             'invalid operation description' => [['sum', 'operation', 'description'], [], false],
             'non-array operation parameters' => [['sum', 'operation', 'parameters'], false, false],

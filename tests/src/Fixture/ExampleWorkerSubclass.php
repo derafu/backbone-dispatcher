@@ -33,7 +33,7 @@ class ExampleWorkerSubclass extends ExampleWorker
      * (`sum()`) inherited unchanged from `ExampleWorker`.
      */
     #[Operation(
-        name: 'Multiply',
+        summary: 'Multiply',
         description: 'Multiplies two integers together.',
     )]
     public function multiply(int $a, int $b): int

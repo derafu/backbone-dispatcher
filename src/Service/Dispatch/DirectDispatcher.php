@@ -36,14 +36,14 @@ use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
  * Two guards run before an operation is ever resolved or invoked, in this
  * order:
  *
- *   - `InspectorInterface::isOperation()`: does it exist at all, as a
- *     public method declared on the worker? This is a fact about the
+ *   - `InspectorInterface::getOperationMethod()`: does the external name
+ *     resolve to a public method on the worker? This is a fact about the
  *     worker, independent of which `OperationPolicyInterface` is
  *     configured.
  *   - `OperationPolicyInterface::isAllowed()`: given that it exists, is it
  *     one this application chooses to expose? Defaults to
- *     `AllowAllOperationPolicy`, preserving the historical "any public
- *     method is an operation" behavior — see that class's docblock for why
+ *     `AllowAllOperationPolicy`, which permits every public operation —
+ *     see that class's docblock for why
  *     `TaggedOperationPolicy` is the recommended choice instead for
  *     anything reached from outside PHP.
  *
@@ -52,7 +52,7 @@ use Derafu\BackboneDispatcher\Service\Resolution\Resolver;
  * both guards apply no matter which tier a caller uses.
  *
  * Invokes the operation with a native named-argument call
- * (`$worker->$operation(...$args)`) rather than a generic invoker: `Resolver`
+ * (`$worker->$method(...$args)`) rather than a generic invoker: `Resolver`
  * already produces `$args` as a plain, name-keyed, fully-cast array — an
  * intermediate invoker would only re-reflect the same callable `Resolver`
  * already resolved against.
@@ -92,7 +92,8 @@ class DirectDispatcher implements DirectDispatcherInterface
             ->getWorker($worker)
         ;
 
-        if (!$this->inspector->isOperation($workerInstance, $operation)) {
+        $method = $this->inspector->getOperationMethod($workerInstance, $operation);
+        if ($method === null) {
             throw OperationNotFoundException::forOperation(
                 $package,
                 $component,
@@ -110,8 +111,8 @@ class DirectDispatcher implements DirectDispatcherInterface
             );
         }
 
-        $args = $this->resolver->resolve($workerInstance, $operation, $parameters);
+        $args = $this->resolver->resolve($workerInstance, $method, $parameters);
 
-        return $workerInstance->{$operation}(...$args);
+        return $workerInstance->{$method}(...$args);
     }
 }
