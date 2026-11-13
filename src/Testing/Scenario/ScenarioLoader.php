@@ -348,7 +348,7 @@ final class ScenarioLoader
                 break;
             case 'ref':
                 $reference = $this->nonEmptyString($value, $path, $key);
-                if (!in_array(explode('.', $reference)[0], $previous, true)) {
+                if (preg_match('/^[a-z][a-z0-9_]*/', $reference, $step) !== 1 || !in_array($step[0], $previous, true)) {
                     throw InvalidScenarioException::forReferenceToStep($path, $key, $reference);
                 }
                 break;

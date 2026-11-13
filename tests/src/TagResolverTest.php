@@ -16,6 +16,7 @@ use Derafu\BackboneDispatcher\Testing\Exception\FixtureUnavailableException;
 use Derafu\BackboneDispatcher\Testing\Exception\InvalidScenarioException;
 use Derafu\BackboneDispatcher\Testing\Fixture\FixtureRegistry;
 use Derafu\BackboneDispatcher\Testing\Scenario\TagResolver;
+use Exception;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
 use PHPUnit\Framework\TestCase;
@@ -87,6 +88,33 @@ class TagResolverTest extends TestCase
         $this->expectExceptionMessage('The reference first.value.id does not exist in the results of the previous steps.');
 
         $this->resolver->resolve(new TaggedValue('ref', 'first.value.id'), ['first' => ['value' => ['id' => null], 'problem' => null]]);
+    }
+
+    public function testAReferenceIsAJmesPathExpression(): void
+    {
+        $references = ['first' => ['value' => ['items' => [['id' => 7], ['id' => 8]]], 'problem' => null]];
+
+        $this->assertSame(8, $this->resolver->resolve(new TaggedValue('ref', 'first.value.items[1].id'), $references));
+        $this->assertSame([7, 8], $this->resolver->resolve(new TaggedValue('ref', 'first.value.items[*].id'), $references));
+    }
+
+    public function testAReferenceToAnEmptyListAndToAListWithOneElementGiveTheList(): void
+    {
+        $references = ['first' => ['value' => ['empty' => [], 'single' => ['a']], 'problem' => null]];
+
+        $this->assertSame([], $this->resolver->resolve(new TaggedValue('ref', 'first.value.empty'), $references));
+        $this->assertSame(['a'], $this->resolver->resolve(new TaggedValue('ref', 'first.value.single'), $references));
+    }
+
+    public function testAReferenceThatIsNotAValidExpressionIsAnInvalidScenarioThatKeepsTheCause(): void
+    {
+        try {
+            $this->resolver->resolve(new TaggedValue('ref', 'first..value'), ['first' => ['value' => 1, 'problem' => null]]);
+            $this->fail('The expression is not valid.');
+        } catch (InvalidScenarioException $e) {
+            $this->assertStringContainsString('The expression first..value is not a valid JMESPath expression', $e->getMessage());
+            $this->assertInstanceOf(Exception::class, $e->getPrevious());
+        }
     }
 
     public function testAReferenceToAValueThatTheResultsDoNotHaveIsAnInvalidScenario(): void

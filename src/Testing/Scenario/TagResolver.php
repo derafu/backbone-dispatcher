@@ -16,9 +16,10 @@ use Derafu\BackboneDispatcher\Exception\MissingOptionalDependencyException;
 use Derafu\BackboneDispatcher\Testing\Exception\FixtureUnavailableException;
 use Derafu\BackboneDispatcher\Testing\Exception\InvalidScenarioException;
 use Derafu\BackboneDispatcher\Testing\Fixture\FixtureRegistry;
-use Derafu\Selector\Selector;
 use Derafu\Value\ValueCaster;
 use Derafu\Value\ValueType;
+use Exception;
+use JmesPath\Env;
 use Symfony\Component\Yaml\Tag\TaggedValue;
 
 /**
@@ -31,13 +32,13 @@ final class TagResolver
 {
     /**
      * @param FixtureRegistry $fixtures
-     * @throws MissingOptionalDependencyException When `derafu/selector` is not
-     * installed.
+     * @throws MissingOptionalDependencyException When `mtdowling/jmespath.php`
+     * is not installed.
      */
     public function __construct(private readonly FixtureRegistry $fixtures)
     {
-        if (!class_exists(Selector::class)) {
-            throw MissingOptionalDependencyException::forFeature(self::class, 'derafu/selector');
+        if (!class_exists(Env::class)) {
+            throw MissingOptionalDependencyException::forFeature(self::class, 'mtdowling/jmespath.php');
         }
     }
 
@@ -51,7 +52,8 @@ final class TagResolver
      * @return mixed
      * @throws InvalidScenarioException When a fixture is not registered, or a
      * reference points to a value that the results do not have or that is
-     * null (a selector cannot tell the two apart).
+     * null (a JMESPath expression cannot tell the two apart), or an expression
+     * is not valid.
      * @throws FixtureUnavailableException When a fixture needs a requirement
      * that is not available.
      */
@@ -94,10 +96,16 @@ final class TagResolver
     {
         $path = ValueCaster::requireString($path);
 
-        if (!Selector::has($references, $path)) {
+        try {
+            $value = Env::search($path, $references);
+        } catch (Exception $e) {
+            throw InvalidScenarioException::forExpression($path, $e);
+        }
+
+        if ($value === null) {
             throw InvalidScenarioException::forMissingReferenceValue($path);
         }
 
-        return Selector::get($references, $path);
+        return $value;
     }
 }

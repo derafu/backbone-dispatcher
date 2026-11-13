@@ -126,6 +126,20 @@ class HarnessWorker implements WorkerInterface
     }
 
     /**
+     * Gives lists of different sizes.
+     *
+     * A list with no elements and a list with one element have to arrive as
+     * they are, not as null or as their element.
+     *
+     * @return array{empty: list<string>, single: list<string>, items: list<array{id: int}>}
+     */
+    #[Operation(name: 'lists')]
+    public function lists(): array
+    {
+        return ['empty' => [], 'single' => ['a'], 'items' => [['id' => 1], ['id' => 2]]];
+    }
+
+    /**
      * Always fails.
      *
      * It throws, to have an operation that ends in a problem.

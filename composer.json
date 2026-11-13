@@ -41,7 +41,6 @@
         "nikic/php-parser": "^5.9",
         "symfony/config": "^8.1",
         "symfony/yaml": "^8.1",
-        "derafu/selector": "dev-main",
         "mtdowling/jmespath.php": "^2.9"
     },
     "suggest": {
@@ -49,8 +48,7 @@
         "nikic/php-parser": "Required by the tests of the messages of the package (Derafu\\Translation\\Lint reads the code).",
         "phpunit/phpunit": "To test a dispatcher with Derafu\\BackboneDispatcher\\Testing.",
         "symfony/yaml": "To run YAML scenarios with Derafu\\BackboneDispatcher\\Testing\\ScenarioTestCase.",
-        "derafu/selector": "To evaluate the JMESPath expectations of the YAML scenarios.",
-        "mtdowling/jmespath.php": "To evaluate the JMESPath expectations of the YAML scenarios."
+        "mtdowling/jmespath.php": "To evaluate the JMESPath expectations and references of the YAML scenarios."
     },
     "scripts": {
         "docs": "php tools/phpdocumentor run --config=phpdoc.xml",

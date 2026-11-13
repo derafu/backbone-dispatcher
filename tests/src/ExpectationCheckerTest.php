@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\TestsBackboneDispatcher;
 
 use Derafu\BackboneDispatcher\Service\Serialization\Serializer;
+use Derafu\BackboneDispatcher\Testing\Exception\InvalidScenarioException;
 use Derafu\BackboneDispatcher\Testing\Fixture\FixtureRegistry;
 use Derafu\BackboneDispatcher\Testing\Scenario\Evaluated;
 use Derafu\BackboneDispatcher\Testing\Scenario\Expectation;
@@ -29,7 +30,6 @@ use Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument;
 use LogicException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
-use PHPUnit\Framework\Attributes\UsesNamespace;
 use PHPUnit\Framework\TestCase;
 use RuntimeException;
 use stdClass;
@@ -45,7 +45,7 @@ use Symfony\Component\Yaml\Tag\TaggedValue;
 #[UsesClass(Expectation::class)]
 #[UsesClass(Failure::class)]
 #[UsesClass(Serializer::class)]
-#[UsesNamespace('Derafu\BackboneDispatcher\Testing\Exception')]
+#[UsesClass(InvalidScenarioException::class)]
 class ExpectationCheckerTest extends TestCase
 {
     private ExpectationChecker $checker;
@@ -121,6 +121,32 @@ class ExpectationCheckerTest extends TestCase
         ]);
 
         $this->assertSame([], $this->check($step, $this->ok($value)));
+    }
+
+    public function testAnEmptyListAndAListWithOneElementAreComparedAsTheyAre(): void
+    {
+        $value = ['empty' => [], 'single' => ['a'], 'items' => [['id' => 1]]];
+
+        $this->assertSame([], $this->check($this->expecting(['empty' => [], 'single' => ['a'], 'items' => [['id' => 1]]]), $this->ok($value)));
+        $this->assertSame(
+            ['Step first: single: expected "a", got ["a"].'],
+            $this->check($this->expecting(['single' => 'a']), $this->ok($value))
+        );
+        $this->assertSame(
+            ['Step first: empty: expected null, got [].'],
+            $this->check($this->expecting(['empty' => null]), $this->ok($value))
+        );
+    }
+
+    public function testAnExpressionThatIsNotValidIsAnInvalidScenarioThatKeepsTheCause(): void
+    {
+        try {
+            $this->check($this->expecting(['a..b' => 1]), $this->ok(['a' => 1]));
+            $this->fail('The expression is not valid.');
+        } catch (InvalidScenarioException $e) {
+            $this->assertStringContainsString('The expression a..b is not a valid JMESPath expression', $e->getMessage());
+            $this->assertNotNull($e->getPrevious());
+        }
     }
 
     public function testReportsEachDifferenceWithTheExpressionAndTheValues(): void

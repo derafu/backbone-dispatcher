@@ -1,0 +1,19 @@
+description: A list with no elements and a list with one element are compared as they are.
+steps:
+  lists:
+    dispatch:
+      operation: example_package.example_component.harness_worker::lists
+    expect:
+      empty: []
+      single: [a]
+      'length(single)': 1
+      'items[0].id': 1
+      'items[*].id': [1, 2]
+      'items[?id==`2`]': [{id: 2}]
+  again:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: !ref lists.value.single[0]
+    expect:
+      message: Hello, a!

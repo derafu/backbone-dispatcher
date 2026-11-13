@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Testing\Exception;
 
 use Derafu\Translation\Exception\Core\TranslatableLogicException;
+use Throwable;
 
 /**
  * Exception for a scenario file with a wrong structure, a tag in the wrong
@@ -213,5 +214,25 @@ class InvalidScenarioException extends TranslatableLogicException
             'The directory {directory} has no scenarios (files with the extension yaml).',
             'directory' => $directory,
         ]);
+    }
+
+    /**
+     * A JMESPath expression that cannot be evaluated: it is not valid.
+     *
+     * @param string $expression The expression.
+     * @param Throwable $cause What the JMESPath library said.
+     * @return self
+     */
+    public static function forExpression(string $expression, Throwable $cause): self
+    {
+        return new self(
+            [
+                'The expression {expression} is not a valid JMESPath expression: {detail}',
+                'expression' => $expression,
+                'detail' => $cause,
+            ],
+            0,
+            $cause
+        );
     }
 }

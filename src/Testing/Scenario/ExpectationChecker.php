@@ -14,7 +14,8 @@ namespace Derafu\BackboneDispatcher\Testing\Scenario;
 
 use Derafu\BackboneDispatcher\Contract\SerializerInterface;
 use Derafu\BackboneDispatcher\Exception\MissingOptionalDependencyException;
-use Derafu\Selector\Selector;
+use Derafu\BackboneDispatcher\Testing\Exception\InvalidScenarioException;
+use Exception;
 use JmesPath\Env;
 use Symfony\Component\Yaml\Tag\TaggedValue;
 use Throwable;
@@ -34,17 +35,13 @@ use Throwable;
 final class ExpectationChecker
 {
     /**
-     * @throws MissingOptionalDependencyException When `derafu/selector` or
-     * `mtdowling/jmespath.php` are not installed.
+     * @throws MissingOptionalDependencyException When `mtdowling/jmespath.php`
+     * is not installed.
      */
     public function __construct(
         private readonly TagResolver $tags,
         private readonly SerializerInterface $serializer,
     ) {
-        if (!class_exists(Selector::class)) {
-            throw MissingOptionalDependencyException::forFeature(self::class, 'derafu/selector');
-        }
-
         if (!class_exists(Env::class)) {
             throw MissingOptionalDependencyException::forFeature(self::class, 'mtdowling/jmespath.php');
         }
@@ -222,8 +219,11 @@ final class ExpectationChecker
     }
 
     /**
-     * Evaluates a JMESPath expression over a serialized value. The expression
-     * `@` is the whole value, whatever it is.
+     * Evaluates a JMESPath expression over a serialized value, as it is: an
+     * empty array is an empty array and a one-element array is a list. The
+     * expression `@` is the whole value, whatever it is.
+     *
+     * @throws InvalidScenarioException When the expression is not valid.
      */
     private function evaluate(mixed $value, string $expression): Evaluated|NotEvaluable
     {
@@ -239,7 +239,11 @@ final class ExpectationChecker
             ));
         }
 
-        return new Evaluated(Selector::get($value, 'jmespath:' . $expression));
+        try {
+            return new Evaluated(Env::search($expression, $value));
+        } catch (Exception $e) {
+            throw InvalidScenarioException::forExpression($expression, $e);
+        }
     }
 
     /**

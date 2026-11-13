@@ -207,7 +207,7 @@ class ScenarioLoaderTest extends TestCase
                 dispatch:
                   operation: p.c.w::run
                   parameters:
-                    list: [1, !ref first.value.id]
+                    list: [1, !ref 'first.value.items[0].id']
                     thing: !fixture {name: thing, args: {id: !ref first.value.id}}
             YAML);
 
@@ -283,6 +283,7 @@ class ScenarioLoaderTest extends TestCase
             'instanceof without a class' => [$step . "  a:\n    deserialize: {type: T, data: x}\n    expect: {call: {getA(): !instanceof}}\n", 'The key steps.a.expect.call.getA() of the scenario'],
             'a reference to an unknown step' => [$step . "  a:\n    dispatch: {operation: x, parameters: {a: !ref other.value}}\n", 'does not point to a step that comes before'],
             'a reference to the same step' => [$step . "  a:\n    dispatch: {operation: x}\n    expect: {a: !ref a.value}\n", 'does not point to a step that comes before'],
+            'a reference that does not start with a step name' => [$step . "  a:\n    dispatch: {operation: x}\n  b:\n    dispatch: {operation: x, parameters: {a: !ref '[0].value'}}\n", 'does not point to a step that comes before'],
             'a reference to a later step' => [$step . "  a:\n    dispatch: {operation: x, parameters: {a: !ref b.value}}\n  b:\n    dispatch: {operation: x}\n", 'does not point to a step that comes before'],
             'an empty reference' => [$step . "  a:\n    dispatch: {operation: x, parameters: {a: !ref ''}}\n", 'The key steps.a.dispatch.parameters.a'],
             'a fixture with a list' => [$step . "  a:\n    dispatch: {operation: x, parameters: {a: !fixture [b]}}\n", 'a fixture name or a map with name and args'],

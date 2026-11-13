@@ -100,6 +100,17 @@ class ExceptionMessagesTest extends TestCase
         $this->assertNull($exception->getPrevious());
     }
 
+    public function testAnInvalidExpressionNamesItAndChainsTheCause(): void
+    {
+        $cause = new RuntimeException('Syntax error at character 2');
+        $exception = InvalidScenarioException::forExpression('a..b', $cause);
+        $translator = TranslatorFactory::create('es', resourceProviders: [new BackboneDispatcherTranslationResourceProvider()]);
+
+        $this->assertSame($cause, $exception->getPrevious());
+        $this->assertSame('The expression a..b is not a valid JMESPath expression: Syntax error at character 2', $exception->getMessage());
+        $this->assertSame('La expresión a..b no es una expresión JMESPath válida: Syntax error at character 2', $exception->trans($translator));
+    }
+
     public function testEnumValueErrorShowsALongValueTruncatedAndChainsTheCause(): void
     {
         $cause = new RuntimeException('Rejected');

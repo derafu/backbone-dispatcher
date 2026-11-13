@@ -81,4 +81,6 @@ return [
         'El requisito {requirement} no está disponible: {reason}',
     'The directory {directory} has no scenarios (files with the extension yaml).' =>
         'El directorio {directory} no tiene escenarios (archivos con la extensión yaml).',
+    'The expression {expression} is not a valid JMESPath expression: {detail}' =>
+        'La expresión {expression} no es una expresión JMESPath válida: {detail}',
 ];

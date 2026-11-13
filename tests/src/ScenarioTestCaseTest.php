@@ -42,6 +42,7 @@ class ScenarioTestCaseTest extends TestCase
             'dispatch/expect_jmespath.yaml',
             'dispatch/failure.yaml',
             'dispatch/fixtures_and_references.yaml',
+            'dispatch/lists.yaml',
             'dispatch/round_trip.yaml',
         ], array_keys($scenarios));
         $this->assertSame([realpath(self::DIRECTORY) . '/scenarios/deserialize/failure.yaml'], [realpath($scenarios['deserialize/failure.yaml'][0])]);
