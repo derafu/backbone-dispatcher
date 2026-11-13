@@ -374,4 +374,40 @@ class ObjectFactoryRegistryTest extends TestCase
         yield ExampleBag::class => new ExampleBagDeserializer();
         yield ExampleGreeting::class => new ExampleGreetingDeserializer();
     }
+
+    public function testSupportsATypeWithARegisteredDeserializer(): void
+    {
+        $registry = new ObjectFactoryRegistry([ExampleBag::class => new ExampleBagDeserializer()]);
+
+        $this->assertTrue($registry->supports(ExampleBag::class));
+        $this->assertFalse($registry->supports(ExampleGreeting::class));
+    }
+
+    public function testSupportsTheArrayPseudoType(): void
+    {
+        $this->assertTrue((new ObjectFactoryRegistry())->supports('array'));
+    }
+
+    public function testSupportsAUnionTypeWhenOneCandidateIsSupported(): void
+    {
+        $registry = new ObjectFactoryRegistry([ExampleBag::class => new ExampleBagDeserializer()]);
+
+        $this->assertTrue($registry->supports('Not\A\Real\Class|' . ExampleBag::class));
+        $this->assertFalse($registry->supports('Not\A\Real\Class|Neither\Is\This'));
+    }
+
+    public function testSupportsWhatTheTypeAwareFallbackSupports(): void
+    {
+        $registry = new ObjectFactoryRegistry(fallback: new FromArrayDeserializer());
+
+        $this->assertTrue($registry->supports(ExampleBag::class));
+        $this->assertFalse($registry->supports('Not\A\Real\Class'));
+    }
+
+    public function testDoesNotSupportWhatOnlyAFallbackWithoutTypeAwarenessCouldBuild(): void
+    {
+        $registry = new ObjectFactoryRegistry(fallback: new ExampleBagDeserializer());
+
+        $this->assertFalse($registry->supports(ExampleBag::class));
+    }
 }

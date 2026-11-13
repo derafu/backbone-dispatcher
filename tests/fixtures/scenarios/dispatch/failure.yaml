@@ -1,0 +1,15 @@
+description: An operation that fails is checked by the exception and the message of its problem.
+steps:
+  boom:
+    dispatch:
+      operation: example_package.example_component.harness_worker::fail
+    failure:
+      exception: [Not\A\Class, RuntimeException]
+      message: went wrong
+  bad_enum:
+    dispatch:
+      operation: example_package.example_component.harness_worker::enum_name
+      parameters:
+        case: 99
+    failure:
+      exception: Derafu\BackboneDispatcher\Exception\InvalidEnumValueException

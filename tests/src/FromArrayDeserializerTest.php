@@ -87,4 +87,19 @@ class FromArrayDeserializerTest extends TestCase
 
         $this->deserializer->deserialize(['result' => 'not an object'], MisbehavingFromArray::class);
     }
+
+    public function testSupportsAClassWithAFromArrayMethod(): void
+    {
+        $this->assertTrue($this->deserializer->supports(ExampleBag::class));
+    }
+
+    public function testDoesNotSupportAClassWithoutAFromArrayMethod(): void
+    {
+        $this->assertFalse($this->deserializer->supports(stdClass::class));
+    }
+
+    public function testDoesNotSupportAClassThatDoesNotExist(): void
+    {
+        $this->assertFalse($this->deserializer->supports('Not\Exist\AtAll'));
+    }
 }

@@ -1,0 +1,9 @@
+description: A scenario whose expectation is wrong, to see how the harness reports it.
+steps:
+  greet:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: Ana
+    expect:
+      message: wrong

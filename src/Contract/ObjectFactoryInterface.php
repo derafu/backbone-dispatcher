@@ -28,4 +28,17 @@ interface ObjectFactoryInterface
      * @return array<string, mixed>|object|null
      */
     public function create(array|string|null $data, string $class): array|object|null;
+
+    /**
+     * Whether `create()` can build `$class` from some input.
+     *
+     * It is true when at least one candidate of the type (a union type
+     * string is split by `|`) is `array`, has a registered deserializer or
+     * is supported by the fallback. It says nothing about a particular
+     * input, which can still be rejected.
+     *
+     * @param string $class
+     * @return bool
+     */
+    public function supports(string $class): bool;
 }

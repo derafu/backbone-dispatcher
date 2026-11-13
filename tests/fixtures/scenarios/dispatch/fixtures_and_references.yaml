@@ -1,0 +1,16 @@
+description: The parameters come from fixtures and from the result of a previous step.
+steps:
+  first:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: !fixture {name: person, args: {name: Bea}}
+    expect:
+      message: Hello, Bea!
+  second:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: !ref first.value.message
+    expect:
+      message: 'Hello, Hello, Bea!!'

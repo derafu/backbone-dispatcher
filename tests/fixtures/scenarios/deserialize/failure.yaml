@@ -1,0 +1,10 @@
+description: A rejection that the object factory wraps is checked by its cause.
+steps:
+  rejected:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument
+      data: not a document
+    failure:
+      exception: Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException
+      caused_by: Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException
+      message: No deserializer was found

@@ -1,0 +1,15 @@
+description: A union type is built with its first candidate that accepts the data.
+steps:
+  union:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument|array
+      data: doc:xyz
+    expect:
+      id: xyz
+  array:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument|array
+      data:
+        some: data
+    expect:
+      some: data

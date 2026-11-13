@@ -55,4 +55,30 @@ return [
         '{deserializer} no coincide con el esquema esperado: {errors}.',
     'The operation name "{name}" is declared by both {first} and {second} in {class}.' =>
         'El nombre de operación "{name}" está declarado por {first} y {second} en {class}.',
+    'The key {key} of the scenario {file} must be {expected}.' =>
+        'La clave {key} del escenario {file} debe ser {expected}.',
+    'The key {key} of the scenario {file} is not allowed.' =>
+        'La clave {key} del escenario {file} no está permitida.',
+    'The step name {step} of the scenario {file} is not valid. It must start with a lowercase letter and have only lowercase letters, digits and underscores.' =>
+        'El nombre del paso {step} del escenario {file} no es válido. Debe comenzar con una letra minúscula y tener solo letras minúsculas, dígitos y guiones bajos.',
+    'The step {step} of the scenario {file} must have exactly one of dispatch or deserialize.' =>
+        'El paso {step} del escenario {file} debe tener exactamente uno de dispatch o deserialize.',
+    'The step {step} of the scenario {file} can have only one of expect, failure or either.' =>
+        'El paso {step} del escenario {file} puede tener solo uno de expect, failure o either.',
+    'The key {key} of the scenario {file} is only allowed in {kind} steps.' =>
+        'La clave {key} del escenario {file} solo está permitida en pasos {kind}.',
+    'The tag {tag} is not allowed at {key} of the scenario {file}.' =>
+        'La etiqueta {tag} no está permitida en {key} del escenario {file}.',
+    'The reference {reference} at {key} of the scenario {file} does not point to a step that comes before.' =>
+        'La referencia {reference} en {key} del escenario {file} no apunta a un paso anterior.',
+    'The reference {reference} does not exist in the results of the previous steps.' =>
+        'La referencia {reference} no existe en los resultados de los pasos anteriores.',
+    'The fixture {name} is not registered.' =>
+        'El fixture {name} no está registrado.',
+    'The requirement {name} is not registered.' =>
+        'El requisito {name} no está registrado.',
+    'The requirement {requirement} is not available: {reason}' =>
+        'El requisito {requirement} no está disponible: {reason}',
+    'The directory {directory} has no scenarios (files with the extension yaml).' =>
+        'El directorio {directory} no tiene escenarios (archivos con la extensión yaml).',
 ];

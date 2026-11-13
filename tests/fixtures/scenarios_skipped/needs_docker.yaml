@@ -1,0 +1,6 @@
+description: A scenario that needs something that this environment does not have.
+requires: [docker]
+steps:
+  never:
+    dispatch:
+      operation: example_package.example_component.harness_worker::fail

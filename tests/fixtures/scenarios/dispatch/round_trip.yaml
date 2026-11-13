@@ -1,0 +1,18 @@
+description: What an operation answers is sent again to the same operation and gives the same.
+steps:
+  first:
+    dispatch:
+      operation: example_package.example_component.harness_worker::echo_document
+      parameters:
+        document: !fixture document
+    expect:
+      id: abc
+      raw: 'doc:abc'
+      length: 7
+  second:
+    dispatch:
+      operation: example_package.example_component.harness_worker::echo_document
+      parameters:
+        document: !ref first.value.raw
+    expect:
+      '@': !ref first.value

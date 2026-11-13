@@ -14,6 +14,7 @@ namespace Derafu\BackboneDispatcher\Service\Deserialization;
 
 use Derafu\BackboneDispatcher\Contract\DeserializerInterface;
 use Derafu\BackboneDispatcher\Contract\ObjectFactoryInterface;
+use Derafu\BackboneDispatcher\Contract\TypeAwareDeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\NoDeserializerFoundException;
 use Derafu\BackboneDispatcher\Exception\ObjectFactoryException;
 use Derafu\BackboneDispatcher\Exception\UnsupportedDataTypeException;
@@ -116,5 +117,30 @@ class ObjectFactoryRegistry implements ObjectFactoryInterface
         }
 
         throw NoDeserializerFoundException::forClass($class, $rejections);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * A fallback that is not a `TypeAwareDeserializerInterface` counts as not
+     * supporting anything: without data there is no way to know what it can
+     * build.
+     */
+    public function supports(string $class): bool
+    {
+        foreach (explode('|', $class) as $candidate) {
+            if ($candidate === 'array' || isset($this->deserializers[$candidate])) {
+                return true;
+            }
+
+            if (
+                $this->fallback instanceof TypeAwareDeserializerInterface
+                && $this->fallback->supports($candidate)
+            ) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

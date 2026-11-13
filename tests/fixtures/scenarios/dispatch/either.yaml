@@ -1,0 +1,20 @@
+description: Either accepts the success or the failure, whichever the operation gives.
+steps:
+  works:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: Ana
+    either:
+      expect:
+        message: Hello, Ana!
+      failure:
+        exception: RuntimeException
+  breaks:
+    dispatch:
+      operation: example_package.example_component.harness_worker::fail
+    either:
+      expect:
+        message: never
+      failure:
+        exception: RuntimeException

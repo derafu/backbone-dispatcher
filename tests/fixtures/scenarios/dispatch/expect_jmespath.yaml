@@ -1,0 +1,22 @@
+description: A dispatched operation is checked with JMESPath over its serialized value.
+steps:
+  greet:
+    dispatch:
+      operation: example_package.example_component.harness_worker::say_hello
+      parameters:
+        name: Ana
+    expect:
+      message: Hello, Ana!
+      'tags[0]': a
+      'length(tags)': 2
+      tags: [a, b]
+      '@':
+        message: !any
+        tags: [a, b]
+  enum:
+    dispatch:
+      operation: example_package.example_component.harness_worker::enum_name
+      parameters:
+        case: 1
+    expect:
+      '@': Low

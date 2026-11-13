@@ -1,0 +1,18 @@
+description: A document built from its text is built again from the text of its serialization.
+steps:
+  first:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument
+      data: !fixture document
+    expect:
+      id: abc
+      call:
+        getId(): abc
+        toArray().length: 7
+        toArray().raw: !any
+  second:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument
+      data: !ref first.value.raw
+    expect:
+      '@': !ref first.value

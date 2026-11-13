@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Derafu\BackboneDispatcher\Service\Deserialization;
 
 use Derafu\BackboneDispatcher\Abstract\AbstractDeserializer;
+use Derafu\BackboneDispatcher\Contract\TypeAwareDeserializerInterface;
 use Derafu\BackboneDispatcher\Exception\ClassNotFoundException;
 use Derafu\BackboneDispatcher\Exception\FromArrayMethodNotFoundException;
 use Derafu\Value\ValueCaster;
@@ -24,7 +25,7 @@ use Derafu\Value\ValueCaster;
  * `ObjectFactoryRegistry`'s fallback for classes that have no dedicated
  * `DeserializerInterface` registered.
  */
-class FromArrayDeserializer extends AbstractDeserializer
+class FromArrayDeserializer extends AbstractDeserializer implements TypeAwareDeserializerInterface
 {
     /**
      * {@inheritDoc}
@@ -42,5 +43,13 @@ class FromArrayDeserializer extends AbstractDeserializer
         $data = $this->assertArray($data);
 
         return ValueCaster::requireObject($class::fromArray($data), $class);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public function supports(string $class): bool
+    {
+        return class_exists($class) && method_exists($class, 'fromArray');
     }
 }

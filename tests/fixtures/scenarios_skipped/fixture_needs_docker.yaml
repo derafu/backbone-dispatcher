@@ -1,0 +1,6 @@
+description: A scenario with a fixture that needs something that this environment does not have.
+steps:
+  never:
+    deserialize:
+      type: Derafu\TestsBackboneDispatcher\Fixture\Harness\HarnessDocument
+      data: !fixture dockerized
